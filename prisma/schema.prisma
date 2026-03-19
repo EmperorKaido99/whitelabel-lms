@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  plan      String   @default("free")
+  theme     String   @default("{}")
+  createdAt DateTime @default(now())
+
+  users    User[]
+  courses  Course[]
+  packages Package[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String
+  role      String   @default("learner")
+  tenantId  String
+  createdAt DateTime @default(now())
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  enrollments Enrollment[]
+
+  @@unique([email, tenantId])
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  status      String   @default("draft")
+  tenantId    String
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
+  modules     Module[]
+  enrollments Enrollment[]
+}
+
+model Module {
+  id       String @id @default(cuid())
+  order    Int
+  courseId String
+  tenantId String
+  type     String
+  content  String @default("{}")
+
+  course Course @relation(fields: [courseId], references: [id])
+}
+
+model Package {
+  id         String @id @default(cuid())
+  storageKey String
+  version    String @default("1.2")
+  tenantId   String
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+}
+
+model Enrollment {
+  id        String   @id @default(cuid())
+  status    String   @default("enrolled")
+  userId    String
+  courseId  String
+  tenantId  String
+  createdAt DateTime @default(now())
+
+  user     User       @relation(fields: [userId], references: [id])
+  course   Course     @relation(fields: [courseId], references: [id])
+  progress Progress[]
+
+  @@unique([userId, courseId])
+}
+
+model Progress {
+  id           String  @id @default(cuid())
+  cmi          String  @default("{}")
+  score        Float?
+  tenantId     String
+  enrollmentId String
+
+  enrollment Enrollment @relation(fields: [enrollmentId], references: [id])
+}
