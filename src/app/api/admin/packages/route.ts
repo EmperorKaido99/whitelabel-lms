@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
+import { writeFile, mkdir } from "fs/promises";
+import { existsSync } from "fs";
+import path from "path";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -17,13 +20,6 @@ interface ScormManifestInfo {
 }
 
 function parseManifest(xml: string): Omit<ScormManifestInfo, "scormFiles"> {
-  const is2004 =
-    xml.includes('schemaversion="2004"') ||
-    xml.includes("scorm_2004") ||
-    xml.includes("CAM 1.3") ||
-    xml.includes("adlcp_rootv1p2") === false; // rough heuristic
-
-  // Re-detect more precisely
   const version: "1.2" | "2004" | "unknown" = xml.includes("2004")
     ? "2004"
     : xml.includes("1.2") || xml.includes("adlcp_rootv1p2")
@@ -31,9 +27,13 @@ function parseManifest(xml: string): Omit<ScormManifestInfo, "scormFiles"> {
     : "unknown";
 
   const titleMatch = xml.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
-  const title = titleMatch ? titleMatch[1].trim().replace(/\s+/g, " ") : "Untitled Course";
+  const title = titleMatch
+    ? titleMatch[1].trim().replace(/\s+/g, " ")
+    : "Untitled Course";
 
-  const resourceHrefMatch = xml.match(/<resource[^>]+href="([^"]+\.html?)"/i);
+  const resourceHrefMatch = xml.match(
+    /<resource[^>]+href="([^"]+\.html?)"/i
+  );
   const entryPoint = resourceHrefMatch ? resourceHrefMatch[1] : "index.html";
 
   return { version, title, entryPoint };
@@ -62,29 +62,59 @@ async function getPrisma() {
 }
 
 // Ensure dev tenant row exists so FK constraints don't fail
-async function ensureDevTenant(prisma: Awaited<ReturnType<typeof getPrisma>>) {
+async function ensureDevTenant(
+  prisma: Awaited<ReturnType<typeof getPrisma>>
+) {
   if (!prisma) return;
   try {
     await prisma.tenant.upsert({
       where: { slug: "dev" },
       update: {},
-      create: {
-        id: DEV_TENANT_ID,
-        slug: "dev",
-        name: "Dev Tenant",
-        plan: "free",
-      },
+      create: { id: DEV_TENANT_ID, slug: "dev", name: "Dev Tenant", plan: "free" },
     });
   } catch (e) {
     console.warn("[scorm-upload] Could not upsert dev tenant:", e);
   }
 }
 
+// Extract a JSZip object to disk at destDir
+async function extractZipToDisk(
+  zip: import("jszip"),
+  destDir: string
+): Promise<void> {
+  if (!existsSync(destDir)) {
+    await mkdir(destDir, { recursive: true });
+  }
+
+  const promises: Promise<void>[] = [];
+
+  zip.forEach((relativePath, zipEntry) => {
+    if (zipEntry.dir) {
+      promises.push(
+        mkdir(path.join(destDir, relativePath), { recursive: true }).then(() => undefined)
+      );
+    } else {
+      promises.push(
+        (async () => {
+          const content = await zipEntry.async("nodebuffer");
+          const filePath = path.join(destDir, relativePath);
+          const fileDir = path.dirname(filePath);
+          if (!existsSync(fileDir)) {
+            await mkdir(fileDir, { recursive: true });
+          }
+          await writeFile(filePath, content);
+        })()
+      );
+    }
+  });
+
+  await Promise.all(promises);
+}
+
 // ---------------------------------------------------------------------------
 // POST  /api/admin/packages
 // ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
-  // Wrap everything so we ALWAYS return JSON — never HTML 500 pages
   try {
     // ---- Auth (optional) --------------------------------------------------
     let tenantId = DEV_TENANT_ID;
@@ -103,52 +133,87 @@ export async function POST(req: NextRequest) {
     try {
       formData = await req.formData();
     } catch {
-      return NextResponse.json({ error: "Could not parse form data – make sure you are sending multipart/form-data." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Could not parse form data – make sure you are sending multipart/form-data." },
+        { status: 400 }
+      );
     }
 
     const file = formData.get("package") as File | null;
     if (!file) {
-      return NextResponse.json({ error: "No file received. Expected a field named 'package'." }, { status: 400 });
+      return NextResponse.json(
+        { error: "No file received. Expected a field named 'package'." },
+        { status: 400 }
+      );
     }
     if (!file.name.toLowerCase().endsWith(".zip")) {
-      return NextResponse.json({ error: "Only .zip packages are accepted." }, { status: 422 });
+      return NextResponse.json(
+        { error: "Only .zip packages are accepted." },
+        { status: 422 }
+      );
     }
     if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: "Package exceeds the 500 MB limit." }, { status: 413 });
+      return NextResponse.json(
+        { error: "Package exceeds the 500 MB limit." },
+        { status: 413 }
+      );
     }
     if (file.size === 0) {
-      return NextResponse.json({ error: "The uploaded file is empty." }, { status: 422 });
+      return NextResponse.json(
+        { error: "The uploaded file is empty." },
+        { status: 422 }
+      );
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // ---- Validate SCORM manifest ------------------------------------------
+    // ---- Validate SCORM manifest & extract to disk -----------------------
     let manifestInfo: ScormManifestInfo;
+    const packageId = randomUUID();
+
     try {
-      // Dynamically import JSZip so a missing/broken module surfaces cleanly
       const JSZip = (await import("jszip")).default;
       const zip = await JSZip.loadAsync(buffer);
+
       const manifestFile = zip.file("imsmanifest.xml");
       if (!manifestFile) {
         return NextResponse.json(
-          { error: "imsmanifest.xml not found at the ZIP root. Is this a valid SCORM package?" },
+          {
+            error:
+              "imsmanifest.xml not found at the ZIP root. Is this a valid SCORM package?",
+          },
           { status: 422 }
         );
       }
+
       const xml = await manifestFile.async("string");
       const parsed = parseManifest(xml);
       manifestInfo = { ...parsed, scormFiles: Object.keys(zip.files).length };
+
+      // Extract to public/scorm/<packageId>/ so Next.js can serve the files
+      const destDir = path.join(
+        process.cwd(),
+        "public",
+        "scorm",
+        packageId
+      );
+      await extractZipToDisk(zip, destDir);
+      console.info(
+        `[scorm-upload] Extracted ${manifestInfo.scormFiles} files to ${destDir}`
+      );
     } catch (zipErr) {
       console.error("[scorm-upload] ZIP error:", zipErr);
-      if (zipErr instanceof Response) throw zipErr; // pass-through NextResponse
+      if (zipErr instanceof Response) throw zipErr;
       return NextResponse.json(
-        { error: "Could not read the ZIP file. Make sure it is a valid, non-corrupted archive." },
+        {
+          error:
+            "Could not read the ZIP file. Make sure it is a valid, non-corrupted archive.",
+        },
         { status: 422 }
       );
     }
 
     // ---- Upload to S3 (skipped when credentials absent) -------------------
-    const packageId = randomUUID();
     const storageKey = `tenants/${tenantId}/packages/${packageId}/${file.name}`;
     const s3 = getS3Client();
     const BUCKET = process.env.S3_BUCKET ?? "whitelabel-lms-packages";
@@ -176,24 +241,23 @@ export async function POST(req: NextRequest) {
         );
       }
     } else {
-      console.info("[scorm-upload] No S3 credentials – skipping upload, saving metadata only.");
+      console.info(
+        "[scorm-upload] No S3 credentials – skipping S3 upload, SCORM files already extracted locally."
+      );
     }
 
     // ---- Persist to database (skipped when DB unavailable) ----------------
     const prisma = await getPrisma();
-    let packageDbId = packageId; // fallback when DB is absent
+    let packageDbId = packageId;
 
     if (prisma) {
-      if (tenantId === DEV_TENANT_ID) {
-        await ensureDevTenant(prisma);
-      }
+      if (tenantId === DEV_TENANT_ID) await ensureDevTenant(prisma);
       try {
         const pkg = await prisma.package.create({
           data: { storageKey, version: manifestInfo.version, tenantId },
         });
         packageDbId = pkg.id;
       } catch (dbErr) {
-        // Non-fatal in dev – log and continue
         console.warn("[scorm-upload] DB write failed (continuing):", dbErr);
       }
     } else {
@@ -204,10 +268,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       packageId: packageDbId,
       storageKey,
+      localPath: `/scorm/${packageId}`,
       ...manifestInfo,
     });
   } catch (unhandled) {
-    // Catch-all so we NEVER return an HTML 500 page
     console.error("[scorm-upload] Unhandled error:", unhandled);
     const message =
       unhandled instanceof Error ? unhandled.message : String(unhandled);
