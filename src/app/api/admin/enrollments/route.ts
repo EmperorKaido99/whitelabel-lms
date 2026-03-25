@@ -103,6 +103,14 @@ export async function POST(req: NextRequest) {
       }
     } catch { /* email optional */ }
 
+    try {
+      const { auth } = await import("@/lib/auth/config");
+      const session = await auth();
+      const actor = session?.user as { id?: string; email?: string } | undefined;
+      const { logAudit } = await import("@/lib/audit");
+      await logAudit({ action: "enrollment.create", actorId: actor?.id, actorEmail: actor?.email, targetId: enrollment.id, targetType: "Enrollment", metadata: { userId, courseId, courseTitle: course.title }, tenantId: tenantId ?? undefined });
+    } catch { /* audit optional */ }
+
     return NextResponse.json(enrollment, { status: 201 });
   } catch (err: unknown) {
     console.error("[enrollments/POST]", err);

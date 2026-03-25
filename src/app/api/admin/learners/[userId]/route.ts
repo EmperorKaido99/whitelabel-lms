@@ -36,6 +36,14 @@ export async function DELETE(
     await prisma.enrollment.deleteMany({ where: { userId, tenantId } });
     await prisma.user.delete({ where: { id: userId } });
 
+    try {
+      const { auth } = await import("@/lib/auth/config");
+      const session = await auth();
+      const actor = session?.user as { id?: string; email?: string; tenantId?: string } | undefined;
+      const { logAudit } = await import("@/lib/audit");
+      await logAudit({ action: "learner.delete", actorId: actor?.id, actorEmail: actor?.email, targetId: userId, targetType: "User", metadata: { email: user.email }, tenantId: tenantId ?? undefined });
+    } catch { /* audit optional */ }
+
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[learners/DELETE]", err);

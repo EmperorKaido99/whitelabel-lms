@@ -54,6 +54,20 @@ export const authConfig: NextAuthConfig = {
       return session;
     },
   },
+  events: {
+    async signIn({ user }) {
+      try {
+        const { logAudit } = await import("@/lib/audit");
+        const u = user as { id?: string; email?: string; tenantId?: string };
+        await logAudit({
+          action: "login",
+          actorId: u.id,
+          actorEmail: u.email ?? undefined,
+          tenantId: u.tenantId,
+        });
+      } catch { /* never block login */ }
+    },
+  },
   pages: {
     signIn: "/auth",
   },

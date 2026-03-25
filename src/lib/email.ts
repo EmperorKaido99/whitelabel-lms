@@ -6,7 +6,7 @@ interface EmailPayload {
   html: string;
 }
 
-async function sendEmail(payload: EmailPayload): Promise<void> {
+export async function sendEmail(payload: EmailPayload): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM ?? "LMS <noreply@yourdomain.com>";
 

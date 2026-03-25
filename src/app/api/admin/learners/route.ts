@@ -68,6 +68,15 @@ export async function POST(req: NextRequest) {
       sendWelcomeEmail(learner.email, learner.name ?? learner.email).catch(() => {});
     } catch { /* email optional */ }
 
+    // Audit log
+    try {
+      const { auth } = await import("@/lib/auth/config");
+      const session = await auth();
+      const actor = session?.user as { id?: string; email?: string; tenantId?: string } | undefined;
+      const { logAudit } = await import("@/lib/audit");
+      await logAudit({ action: "learner.create", actorId: actor?.id, actorEmail: actor?.email, targetId: learner.id, targetType: "User", metadata: { email: learner.email }, tenantId });
+    } catch { /* audit optional */ }
+
     return NextResponse.json(learner, { status: 201 });
   } catch (err: unknown) {
     console.error("[learners/POST]", err);

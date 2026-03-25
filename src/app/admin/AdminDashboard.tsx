@@ -121,6 +121,8 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
           <span style={{ color: "#5a7aff", fontSize: 13, fontWeight: 500 }}>Admin</span>
           <Link href="/admin/learners" style={navLink}>Learners</Link>
           <Link href="/admin/analytics" style={navLink}>Analytics</Link>
+          <Link href="/admin/tenants" style={navLink}>Tenants</Link>
+          <Link href="/admin/audit" style={navLink}>Audit Log</Link>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <Link href="/catalog" style={ghostBtn}>View Catalog</Link>

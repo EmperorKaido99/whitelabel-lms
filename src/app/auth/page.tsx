@@ -102,6 +102,10 @@ function SignInForm() {
               {loading ? "Signing in…" : "Sign In"}
             </button>
           </form>
+
+          <div style={{ textAlign: "center", marginTop: 20, paddingTop: 20, borderTop: "1px solid #1e2433" }}>
+            <Link href="/auth/forgot" style={{ fontSize: 13, color: "#5a7aff", textDecoration: "none" }}>Forgot password?</Link>
+          </div>
         </div>
 
         <p style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#3a4a68" }}>
