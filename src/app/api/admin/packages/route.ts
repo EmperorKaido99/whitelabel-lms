@@ -266,7 +266,8 @@ export async function POST(req: NextRequest) {
 
     // ---- Success ----------------------------------------------------------
     return NextResponse.json({
-      packageId: packageDbId,
+      packageId,
+      dbId: packageDbId,
       storageKey,
       localPath: `/scorm/${packageId}`,
       ...manifestInfo,
