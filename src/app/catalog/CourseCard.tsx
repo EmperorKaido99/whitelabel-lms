@@ -6,6 +6,8 @@ export interface CatalogCourse {
   id: string;
   packageId: string;
   title: string;
+  description?: string;
+  categories?: string[];
   entryPoint: string;
   version: string;
   fileCount: number;
@@ -30,18 +32,11 @@ export default function CourseCard({ course, index }: { course: CatalogCourse; i
   return (
     <Link href={`/catalog/${course.id}`} style={{ textDecoration: "none" }}>
       <div
-        style={{
-          background: "#111520",
-          border: `1px solid #1e2433`,
-          borderRadius: 10,
-          overflow: "hidden",
-          transition: "all 0.2s ease",
-          cursor: "pointer",
-        }}
+        style={{ background: "#111520", border: "1px solid #1e2433", borderRadius: 10, overflow: "hidden", transition: "all 0.2s ease", cursor: "pointer" }}
         onMouseEnter={e => {
           (e.currentTarget as HTMLDivElement).style.borderColor = color.accent;
           (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
-          (e.currentTarget as HTMLDivElement).style.boxShadow = `0 8px 32px rgba(0,0,0,0.3)`;
+          (e.currentTarget as HTMLDivElement).style.boxShadow = "0 8px 32px rgba(0,0,0,0.3)";
         }}
         onMouseLeave={e => {
           (e.currentTarget as HTMLDivElement).style.borderColor = "#1e2433";
@@ -52,39 +47,33 @@ export default function CourseCard({ course, index }: { course: CatalogCourse; i
         <div style={{ height: 4, background: `linear-gradient(90deg, ${color.accent}, transparent)` }} />
 
         <div style={{ padding: "20px 22px 22px" }}>
-          <div style={{ marginBottom: 14 }}>
-            <span style={{
-              fontSize: 10,
-              fontFamily: "'IBM Plex Mono', monospace",
-              padding: "3px 8px",
-              borderRadius: 3,
-              background: color.bg,
-              border: `1px solid ${color.border}`,
-              color: color.accent,
-              letterSpacing: "0.5px",
-            }}>
+          {/* Version + categories */}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+            <span style={{ fontSize: 10, fontFamily: "'IBM Plex Mono', monospace", padding: "3px 8px", borderRadius: 3, background: color.bg, border: `1px solid ${color.border}`, color: color.accent, letterSpacing: "0.5px" }}>
               SCORM {course.version}
             </span>
+            {(course.categories ?? []).slice(0, 2).map(cat => (
+              <span key={cat} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 3, background: "rgba(255,255,255,0.04)", border: "1px solid #2a3347", color: "#7a90bc" }}>
+                {cat}
+              </span>
+            ))}
           </div>
 
-          <h2 style={{
-            fontSize: 16,
-            fontWeight: 600,
-            color: "#e2e8f0",
-            marginBottom: 8,
-            letterSpacing: "-0.2px",
-            lineHeight: 1.4,
-          }}>
+          <h2 style={{ fontSize: 16, fontWeight: 600, color: "#e2e8f0", marginBottom: 8, letterSpacing: "-0.2px", lineHeight: 1.4 }}>
             {course.title}
           </h2>
+
+          {course.description && (
+            <p style={{ fontSize: 13, color: "#4a5568", lineHeight: 1.5, marginBottom: 12, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              {course.description}
+            </p>
+          )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 18 }}>
             <span style={{ fontSize: 12, color: "#3a4a68", fontFamily: "'IBM Plex Mono', monospace" }}>
               {course.fileCount} files · {course.entryPoint.split("/").pop()}
             </span>
-            <span style={{ fontSize: 12, color: "#3a4a68" }}>
-              Published {publishedDate}
-            </span>
+            <span style={{ fontSize: 12, color: "#3a4a68" }}>Published {publishedDate}</span>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 6, color: color.accent, fontSize: 13, fontWeight: 500 }}>

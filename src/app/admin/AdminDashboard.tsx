@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 export interface CatalogCourse {
   id: string;
   packageId: string;
   title: string;
+  description?: string;
+  categories?: string[];
   entryPoint: string;
   version: string;
   fileCount: number;
@@ -41,11 +43,15 @@ function timeAgo(dateStr: string) {
 }
 
 export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, tenantSlug }: DashboardProps) {
-  const router = useRouter();
   const [courseList, setCourseList] = useState(courses);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [editingCourse, setEditingCourse] = useState<CatalogCourse | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editCategories, setEditCategories] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const scorm12Count = courseList.filter(c => c.version === "1.2").length;
   const scorm2004Count = courseList.filter(c => c.version === "2004").length;
@@ -67,22 +73,58 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
     }
   };
 
+  const openEdit = (course: CatalogCourse) => {
+    setEditingCourse(course);
+    setEditTitle(course.title);
+    setEditDescription(course.description ?? "");
+    setEditCategories((course.categories ?? []).join(", "));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingCourse) return;
+    setSaving(true);
+    try {
+      const categories = editCategories
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
+      const res = await fetch(`/api/admin/courses/${editingCourse.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: editTitle, description: editDescription, categories }),
+      });
+      if (res.ok) {
+        const { course: updated } = await res.json();
+        setCourseList(prev => prev.map(c => c.id === editingCourse.id ? { ...c, ...updated } : c));
+        setEditingCourse(null);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: "#0a0b0f", fontFamily: "'IBM Plex Sans', sans-serif", color: "#e2e8f0" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        input:focus, textarea:focus { outline: none; border-color: #5a7aff !important; }
       `}</style>
 
       {/* Nav */}
       <nav style={{ borderBottom: "1px solid #13161f", padding: "0 40px", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0c0e14", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
           <Link href="/" style={{ color: "#f0f4ff", fontWeight: 600, fontSize: 15, textDecoration: "none", letterSpacing: "-0.3px" }}>◆ LMS</Link>
-          <span style={{ color: "#5a7aff", fontSize: 13, fontWeight: 500 }}>Admin Dashboard</span>
+          <span style={{ color: "#5a7aff", fontSize: 13, fontWeight: 500 }}>Admin</span>
+          <Link href="/admin/learners" style={navLink}>Learners</Link>
+          <Link href="/admin/analytics" style={navLink}>Analytics</Link>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <Link href="/catalog" style={ghostBtn}>View Catalog</Link>
           <Link href="/admin/scorm/upload" style={primaryBtn}>+ Upload Course</Link>
+          <button onClick={() => signOut({ callbackUrl: "/auth" })} style={{ ...ghostBtn, border: "none", cursor: "pointer", fontFamily: "'IBM Plex Sans', sans-serif" }}>
+            Sign Out
+          </button>
         </div>
       </nav>
 
@@ -111,34 +153,8 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
           <StatCard label="Storage Used" value={formatBytes(totalSizeBytes)} icon="💾" accent="#4ade80" />
         </div>
 
-        {/* Suggestions banner */}
-        <div style={{ background: "rgba(90,122,255,0.06)", border: "1px solid rgba(90,122,255,0.15)", borderRadius: 10, padding: "20px 24px", marginBottom: 36 }}>
-          <div style={{ fontSize: 11, letterSpacing: "1.5px", textTransform: "uppercase", color: "#5a7aff", fontFamily: "'IBM Plex Mono', monospace", marginBottom: 12 }}>
-            Suggested Next Features
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-            {[
-              { icon: "👥", title: "Learner Management", desc: "Enroll & manage users per course" },
-              { icon: "📊", title: "Progress Tracking", desc: "Completions, scores & time spent" },
-              { icon: "✏️", title: "Course Editing", desc: "Rename & update published courses" },
-              { icon: "🔐", title: "Admin Auth", desc: "Password-protect the admin area" },
-              { icon: "📈", title: "Analytics", desc: "Completion rates & engagement stats" },
-              { icon: "🏷️", title: "Course Categories", desc: "Tag & organise courses by topic" },
-            ].map(s => (
-              <div key={s.title} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "10px 12px", background: "#0c0e14", borderRadius: 7, border: "1px solid #1e2433" }}>
-                <span style={{ fontSize: 18 }}>{s.icon}</span>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "#c5d0e8", marginBottom: 2 }}>{s.title}</div>
-                  <div style={{ fontSize: 12, color: "#4a5568" }}>{s.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Course Table */}
         <div style={{ background: "#0c0e14", border: "1px solid #1e2433", borderRadius: 10, overflow: "hidden" }}>
-          {/* Table header */}
           <div style={{ padding: "20px 24px", borderBottom: "1px solid #1e2433", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
             <div>
               <h2 style={{ fontSize: 16, fontWeight: 600, color: "#e2e8f0", marginBottom: 2 }}>Published Courses</h2>
@@ -153,7 +169,7 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
           </div>
 
           {/* Column headers */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 80px 120px 160px 100px", padding: "10px 24px", borderBottom: "1px solid #13161f", background: "#080a0f" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 100px 80px 120px 160px 120px", padding: "10px 24px", borderBottom: "1px solid #13161f", background: "#080a0f" }}>
             {["Course Title", "Version", "Files", "Size", "Published", "Actions"].map(h => (
               <span key={h} style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "#3a4a68", fontFamily: "'IBM Plex Mono', monospace" }}>{h}</span>
             ))}
@@ -166,7 +182,7 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
             </div>
           ) : (
             filtered.map((course, i) => (
-              <div key={course.id} style={{ display: "grid", gridTemplateColumns: "1fr 100px 80px 120px 160px 100px", padding: "14px 24px", borderBottom: i < filtered.length - 1 ? "1px solid #13161f" : "none", alignItems: "center", transition: "background 0.15s" }}
+              <div key={course.id} style={{ display: "grid", gridTemplateColumns: "1fr 100px 80px 120px 160px 120px", padding: "14px 24px", borderBottom: i < filtered.length - 1 ? "1px solid #13161f" : "none", alignItems: "center", transition: "background 0.15s" }}
                 onMouseEnter={e => (e.currentTarget.style.background = "#111520")}
                 onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
               >
@@ -178,8 +194,13 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
                   >
                     {course.title}
                   </Link>
-                  <div style={{ fontSize: 11, color: "#3a4a68", fontFamily: "'IBM Plex Mono', monospace", marginTop: 2 }}>
-                    {course.id.slice(0, 8)}…
+                  <div style={{ display: "flex", gap: 6, marginTop: 4, flexWrap: "wrap" }}>
+                    {(course.categories ?? []).slice(0, 3).map(cat => (
+                      <span key={cat} style={{ fontSize: 10, padding: "2px 6px", borderRadius: 3, background: "rgba(90,122,255,0.1)", color: "#5a7aff", border: "1px solid rgba(90,122,255,0.15)" }}>{cat}</span>
+                    ))}
+                    {!course.categories?.length && (
+                      <span style={{ fontSize: 11, color: "#3a4a68", fontFamily: "'IBM Plex Mono', monospace" }}>{course.id.slice(0, 8)}…</span>
+                    )}
                   </div>
                 </div>
 
@@ -190,13 +211,9 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
                   </span>
                 </div>
 
-                {/* Files */}
                 <span style={{ fontSize: 13, color: "#7a90bc", fontFamily: "'IBM Plex Mono', monospace" }}>{course.fileCount}</span>
-
-                {/* Size */}
                 <span style={{ fontSize: 13, color: "#7a90bc", fontFamily: "'IBM Plex Mono', monospace" }}>{course.sizeBytes ? formatBytes(course.sizeBytes) : "—"}</span>
 
-                {/* Published */}
                 <div>
                   <div style={{ fontSize: 13, color: "#7a90bc" }}>{new Date(course.publishedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</div>
                   <div style={{ fontSize: 11, color: "#3a4a68" }}>{timeAgo(course.publishedAt)}</div>
@@ -204,9 +221,8 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
 
                 {/* Actions */}
                 <div style={{ display: "flex", gap: 6 }}>
-                  <Link href={`/catalog/${course.id}`} title="Launch course" style={{ padding: "5px 10px", borderRadius: 4, background: "rgba(90,122,255,0.1)", border: "1px solid rgba(90,122,255,0.2)", color: "#5a7aff", fontSize: 12, textDecoration: "none", fontWeight: 500 }}>
-                    ▶
-                  </Link>
+                  <Link href={`/catalog/${course.id}`} title="Launch" style={{ padding: "5px 10px", borderRadius: 4, background: "rgba(90,122,255,0.1)", border: "1px solid rgba(90,122,255,0.2)", color: "#5a7aff", fontSize: 12, textDecoration: "none", fontWeight: 500 }}>▶</Link>
+                  <button onClick={() => openEdit(course)} title="Edit" style={{ padding: "5px 10px", borderRadius: 4, background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.15)", color: "#4ade80", fontSize: 12, cursor: "pointer", fontFamily: "'IBM Plex Sans', sans-serif" }}>✏</button>
                   {confirmDelete === course.id ? (
                     <div style={{ display: "flex", gap: 4 }}>
                       <button onClick={() => handleDelete(course.id)} disabled={deleting === course.id} style={{ padding: "5px 8px", borderRadius: 4, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)", color: "#f87171", fontSize: 11, cursor: "pointer", fontFamily: "'IBM Plex Sans', sans-serif" }}>
@@ -215,9 +231,7 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
                       <button onClick={() => setConfirmDelete(null)} style={{ padding: "5px 8px", borderRadius: 4, background: "transparent", border: "1px solid #2a3347", color: "#4a5568", fontSize: 11, cursor: "pointer", fontFamily: "'IBM Plex Sans', sans-serif" }}>No</button>
                     </div>
                   ) : (
-                    <button onClick={() => setConfirmDelete(course.id)} title="Delete course" style={{ padding: "5px 10px", borderRadius: 4, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)", color: "#f87171", fontSize: 12, cursor: "pointer", fontFamily: "'IBM Plex Sans', sans-serif" }}>
-                      🗑
-                    </button>
+                    <button onClick={() => setConfirmDelete(course.id)} title="Delete" style={{ padding: "5px 10px", borderRadius: 4, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.15)", color: "#f87171", fontSize: 12, cursor: "pointer", fontFamily: "'IBM Plex Sans', sans-serif" }}>🗑</button>
                   )}
                 </div>
               </div>
@@ -228,12 +242,12 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
         {/* Quick actions */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginTop: 24 }}>
           <QuickAction href="/admin/scorm/upload" icon="⬆" title="Upload SCORM Package" desc="Add a new course to the platform" accent="#5a7aff" />
-          <QuickAction href="/catalog" icon="📚" title="View Course Catalog" desc="See the learner-facing catalog" accent="#22d3ee" />
-          <QuickAction href="/" icon="🏠" title="Back to Home" desc="Return to the main landing page" accent="#4ade80" />
+          <QuickAction href="/admin/learners" icon="👥" title="Manage Learners" desc="Enroll & track learner progress" accent="#22d3ee" />
+          <QuickAction href="/admin/analytics" icon="📈" title="Analytics" desc="Completion rates & engagement stats" accent="#4ade80" />
         </div>
       </main>
 
-      {/* Confirm delete overlay */}
+      {/* Confirm delete modal */}
       {confirmDelete && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}
           onClick={() => setConfirmDelete(null)}>
@@ -248,6 +262,47 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
                 {deleting ? "Deleting…" : "Yes, delete"}
               </button>
               <button onClick={() => setConfirmDelete(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 6, background: "transparent", border: "1px solid #2a3347", color: "#7a90bc", fontSize: 14, cursor: "pointer", fontFamily: "'IBM Plex Sans', sans-serif" }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit course modal */}
+      {editingCourse && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={() => setEditingCourse(null)}>
+          <div style={{ background: "#111520", border: "1px solid #2a3347", borderRadius: 10, padding: 32, maxWidth: 480, width: "90%" }}
+            onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: 18, fontWeight: 600, color: "#f0f4ff", marginBottom: 24 }}>Edit Course</h3>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <label style={labelStyle}>Title</label>
+                <input value={editTitle} onChange={e => setEditTitle(e.target.value)} style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Description</label>
+                <textarea
+                  value={editDescription}
+                  onChange={e => setEditDescription(e.target.value)}
+                  rows={3}
+                  placeholder="Optional course description…"
+                  style={{ ...inputStyle, resize: "vertical", minHeight: 80 }}
+                />
+              </div>
+              <div>
+                <label style={labelStyle}>Categories <span style={{ color: "#3a4a68", fontWeight: 400 }}>(comma-separated)</span></label>
+                <input value={editCategories} onChange={e => setEditCategories(e.target.value)} placeholder="e.g. Compliance, Safety, HR" style={inputStyle} />
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+              <button onClick={handleSaveEdit} disabled={saving || !editTitle.trim()} style={{ flex: 1, padding: "10px 0", borderRadius: 6, background: saving ? "#3a4a88" : "#5a7aff", border: "none", color: "#fff", fontWeight: 500, fontSize: 14, cursor: saving ? "not-allowed" : "pointer", fontFamily: "'IBM Plex Sans', sans-serif" }}>
+                {saving ? "Saving…" : "Save Changes"}
+              </button>
+              <button onClick={() => setEditingCourse(null)} style={{ flex: 1, padding: "10px 0", borderRadius: 6, background: "transparent", border: "1px solid #2a3347", color: "#7a90bc", fontSize: 14, cursor: "pointer", fontFamily: "'IBM Plex Sans', sans-serif" }}>
                 Cancel
               </button>
             </div>
@@ -288,3 +343,6 @@ function QuickAction({ href, icon, title, desc, accent }: { href: string; icon: 
 
 const primaryBtn: React.CSSProperties = { background: "#5a7aff", color: "#fff", padding: "7px 16px", borderRadius: 5, fontSize: 13, textDecoration: "none", fontWeight: 500 };
 const ghostBtn: React.CSSProperties = { background: "transparent", color: "#7a90bc", padding: "7px 16px", borderRadius: 5, fontSize: 13, textDecoration: "none", border: "1px solid #2a3347" };
+const navLink: React.CSSProperties = { color: "#4a5568", fontSize: 13, textDecoration: "none", padding: "4px 8px", borderRadius: 4 };
+const inputStyle: React.CSSProperties = { width: "100%", background: "#0c0e14", border: "1px solid #2a3347", borderRadius: 6, padding: "9px 12px", fontSize: 13, color: "#e2e8f0", fontFamily: "'IBM Plex Sans', sans-serif" };
+const labelStyle: React.CSSProperties = { display: "block", fontSize: 12, fontWeight: 500, color: "#7a90bc", marginBottom: 6, letterSpacing: "0.3px" };

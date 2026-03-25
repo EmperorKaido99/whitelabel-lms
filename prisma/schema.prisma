@@ -23,6 +23,8 @@ model Tenant {
 model User {
   id        String   @id @default(cuid())
   email     String
+  password  String?
+  name      String?
   role      String   @default("learner")
   tenantId  String
   createdAt DateTime @default(now())
@@ -37,6 +39,7 @@ model Course {
   id          String   @id @default(cuid())
   title       String
   description String?
+  categories  String   @default("[]")
   status      String   @default("draft")
   tenantId    String
   createdAt   DateTime @default(now())
@@ -82,11 +85,13 @@ model Enrollment {
 }
 
 model Progress {
-  id           String  @id @default(cuid())
-  cmi          String  @default("{}")
+  id           String    @id @default(cuid())
+  cmi          String    @default("{}")
   score        Float?
+  completedAt  DateTime?
+  timeSpent    Int?
   tenantId     String
-  enrollmentId String
+  enrollmentId String    @unique
 
   enrollment Enrollment @relation(fields: [enrollmentId], references: [id])
 }
