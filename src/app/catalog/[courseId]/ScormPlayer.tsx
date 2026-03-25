@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 interface CatalogCourse {
   id: string;
@@ -21,6 +21,42 @@ export default function ScormPlayer({
   scormUrl: string;
 }) {
   const [loaded, setLoaded] = useState(false);
+  const [apiReady, setApiReady] = useState(false);
+  const scriptInjected = useRef(false);
+
+  // Inject the SCORM runtime API onto window before the iframe loads
+  useEffect(() => {
+    if (scriptInjected.current) return;
+    scriptInjected.current = true;
+
+    const src =
+      course.version === "2004"
+        ? "/scorm-runtime/scorm2004.min.js"
+        : "/scorm-runtime/scorm12.min.js";
+
+    const script = document.createElement("script");
+    script.src = src;
+    script.onload = () => {
+      if (course.version === "2004") {
+        // scorm2004.min.js sets window.Scorm2004API
+        (window as unknown as Record<string, unknown>)["API_1484_11"] =
+          new (window as unknown as { Scorm2004API: new (cfg: object) => unknown })
+            .Scorm2004API({ autocommit: true, autocommitSeconds: 10 });
+      } else {
+        // scorm12.min.js sets window.Scorm12API
+        (window as unknown as Record<string, unknown>)["API"] =
+          new (window as unknown as { Scorm12API: new (cfg: object) => unknown })
+            .Scorm12API({ autocommit: true, autocommitSeconds: 10 });
+      }
+      setApiReady(true);
+    };
+    script.onerror = () => {
+      // Still allow the iframe to load even if the API fails
+      console.warn("[scorm-player] SCORM runtime script failed to load");
+      setApiReady(true);
+    };
+    document.head.appendChild(script);
+  }, [course.version]);
 
   const publishedDate = new Date(course.publishedAt).toLocaleDateString("en-US", {
     year: "numeric",
@@ -65,9 +101,7 @@ export default function ScormPlayer({
             </svg>
             Catalog
           </Link>
-
           <span style={{ color: "#1e2433", fontSize: 12 }}>›</span>
-
           <span style={{ fontSize: 13, color: "#7a90bc", fontWeight: 500 }}>
             {course.title}
           </span>
@@ -94,8 +128,8 @@ export default function ScormPlayer({
 
       {/* Player area */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
-        {/* Loading overlay */}
-        {!loaded && (
+        {/* Loading overlay — shown until API is ready AND iframe has loaded */}
+        {(!apiReady || !loaded) && (
           <div style={{
             position: "absolute",
             inset: 0,
@@ -115,25 +149,30 @@ export default function ScormPlayer({
               borderRadius: "50%",
               animation: "spin 0.7s linear infinite",
             }} />
-            <p style={{ color: "#4a5568", fontSize: 13 }}>Loading course…</p>
+            <p style={{ color: "#4a5568", fontSize: 13 }}>
+              {!apiReady ? "Initialising SCORM runtime…" : "Loading course…"}
+            </p>
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         )}
 
-        <iframe
-          src={scormUrl}
-          title={course.title}
-          onLoad={() => setLoaded(true)}
-          style={{
-            flex: 1,
-            width: "100%",
-            border: "none",
-            minHeight: "calc(100vh - 52px)",
-            opacity: loaded ? 1 : 0,
-            transition: "opacity 0.3s ease",
-          }}
-          allow="fullscreen"
-        />
+        {/* Only render iframe once API is on window */}
+        {apiReady && (
+          <iframe
+            src={scormUrl}
+            title={course.title}
+            onLoad={() => setLoaded(true)}
+            style={{
+              flex: 1,
+              width: "100%",
+              border: "none",
+              minHeight: "calc(100vh - 52px)",
+              opacity: loaded ? 1 : 0,
+              transition: "opacity 0.3s ease",
+            }}
+            allow="fullscreen"
+          />
+        )}
       </div>
     </div>
   );

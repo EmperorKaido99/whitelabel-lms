@@ -16,7 +16,7 @@ node_modules/
 
 # runtime / generated
 /data/
-/public/
+/public/scorm/
 .claude/
 
 # misc
