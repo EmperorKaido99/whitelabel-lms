@@ -54,10 +54,38 @@ export async function POST(req: NextRequest) {
 
     // Update enrollment status if completed
     if (completed) {
+      const wasAlreadyCompleted = enrollment.status === "completed";
       await prisma.enrollment.update({
         where: { id: enrollment.id },
         data: { status: "completed" },
       });
+
+      // Send completion email only once (first time completing)
+      if (!wasAlreadyCompleted) {
+        try {
+          const user = await prisma.user.findUnique({ where: { id: userId! } });
+          // Get course title from catalog
+          let courseTitle = enrollment.courseId;
+          try {
+            const { readFile } = await import("fs/promises");
+            const { join } = await import("path");
+            const raw = await readFile(join(process.cwd(), "data", "catalog.json"), "utf-8");
+            const catalog: { id: string; title: string }[] = JSON.parse(raw);
+            courseTitle = catalog.find(c => c.id === enrollment.courseId)?.title ?? courseTitle;
+          } catch { /* catalog optional */ }
+
+          if (user?.email) {
+            const { sendCompletionEmail } = await import("@/lib/email");
+            sendCompletionEmail(
+              user.email,
+              user.name ?? user.email,
+              courseTitle,
+              score ?? null,
+              enrollment.id,
+            ).catch(() => {});
+          }
+        } catch { /* email optional */ }
+      }
     }
 
     return NextResponse.json({ saved: true });

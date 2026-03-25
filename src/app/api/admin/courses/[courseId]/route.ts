@@ -49,7 +49,7 @@ export async function PATCH(
   try {
     const { courseId } = await params;
     const body = await req.json();
-    const { title, description, categories } = body;
+    const { title, description, categories, prerequisites } = body;
 
     const raw = await readFile(CATALOG_PATH, "utf-8");
     const catalog = JSON.parse(raw);
@@ -62,6 +62,7 @@ export async function PATCH(
     if (title !== undefined) catalog[idx].title = title.trim();
     if (description !== undefined) catalog[idx].description = description.trim();
     if (categories !== undefined) catalog[idx].categories = Array.isArray(categories) ? categories : [];
+    if (prerequisites !== undefined) catalog[idx].prerequisites = Array.isArray(prerequisites) ? prerequisites : [];
 
     await writeFile(CATALOG_PATH, JSON.stringify(catalog, null, 2), "utf-8");
 

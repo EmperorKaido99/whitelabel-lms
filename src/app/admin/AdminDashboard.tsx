@@ -10,6 +10,7 @@ export interface CatalogCourse {
   title: string;
   description?: string;
   categories?: string[];
+  prerequisites?: string[];
   entryPoint: string;
   version: string;
   fileCount: number;
@@ -51,6 +52,7 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editCategories, setEditCategories] = useState("");
+  const [editPrerequisites, setEditPrerequisites] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   const scorm12Count = courseList.filter(c => c.version === "1.2").length;
@@ -78,6 +80,7 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
     setEditTitle(course.title);
     setEditDescription(course.description ?? "");
     setEditCategories((course.categories ?? []).join(", "));
+    setEditPrerequisites(course.prerequisites ?? []);
   };
 
   const handleSaveEdit = async () => {
@@ -91,7 +94,7 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
       const res = await fetch(`/api/admin/courses/${editingCourse.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: editTitle, description: editDescription, categories }),
+        body: JSON.stringify({ title: editTitle, description: editDescription, categories, prerequisites: editPrerequisites }),
       });
       if (res.ok) {
         const { course: updated } = await res.json();
@@ -296,6 +299,26 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
                 <label style={labelStyle}>Categories <span style={{ color: "#3a4a68", fontWeight: 400 }}>(comma-separated)</span></label>
                 <input value={editCategories} onChange={e => setEditCategories(e.target.value)} placeholder="e.g. Compliance, Safety, HR" style={inputStyle} />
               </div>
+              {courseList.filter(c => c.id !== editingCourse?.id).length > 0 && (
+                <div>
+                  <label style={labelStyle}>Prerequisites <span style={{ color: "#3a4a68", fontWeight: 400 }}>(must complete before this course)</span></label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 140, overflowY: "auto", background: "#0c0e14", border: "1px solid #2a3347", borderRadius: 6, padding: "8px 10px" }}>
+                    {courseList.filter(c => c.id !== editingCourse?.id).map(c => (
+                      <label key={c.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "#c5d0e8" }}>
+                        <input
+                          type="checkbox"
+                          checked={editPrerequisites.includes(c.id)}
+                          onChange={e => setEditPrerequisites(prev =>
+                            e.target.checked ? [...prev, c.id] : prev.filter(id => id !== c.id)
+                          )}
+                          style={{ accentColor: "#5a7aff", width: 14, height: 14 }}
+                        />
+                        {c.title}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div style={{ display: "flex", gap: 10, marginTop: 24 }}>

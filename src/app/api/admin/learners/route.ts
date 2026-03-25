@@ -61,6 +61,13 @@ export async function POST(req: NextRequest) {
         tenantId,
       },
     });
+
+    // Send welcome email (fire and forget)
+    try {
+      const { sendWelcomeEmail } = await import("@/lib/email");
+      sendWelcomeEmail(learner.email, learner.name ?? learner.email).catch(() => {});
+    } catch { /* email optional */ }
+
     return NextResponse.json(learner, { status: 201 });
   } catch (err: unknown) {
     console.error("[learners/POST]", err);

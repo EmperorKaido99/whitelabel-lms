@@ -91,6 +91,18 @@ export async function POST(req: NextRequest) {
       },
       include: { user: true, course: true },
     });
+
+    // Send enrollment email (fire and forget)
+    try {
+      const { sendEnrollmentEmail } = await import("@/lib/email");
+      const courseTitle = course.title;
+      const userEmail = enrollment.user?.email;
+      const userName = enrollment.user?.name ?? userEmail ?? "";
+      if (userEmail) {
+        sendEnrollmentEmail(userEmail, userName, courseTitle).catch(() => {});
+      }
+    } catch { /* email optional */ }
+
     return NextResponse.json(enrollment, { status: 201 });
   } catch (err: unknown) {
     console.error("[enrollments/POST]", err);

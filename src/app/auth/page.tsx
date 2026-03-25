@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -12,7 +12,7 @@ function SignInForm() {
   const [loading, setLoading] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/admin";
+  const callbackUrl = searchParams.get("callbackUrl");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +27,14 @@ function SignInForm() {
       if (result?.error) {
         setError("Invalid email or password.");
       } else {
-        router.push(callbackUrl);
+        // Redirect based on role
+        const session = await getSession();
+        const role = (session?.user as { role?: string })?.role;
+        if (callbackUrl && callbackUrl !== "/admin" && callbackUrl !== "/dashboard") {
+          router.push(callbackUrl);
+        } else {
+          router.push(role === "admin" ? "/admin" : "/dashboard");
+        }
         router.refresh();
       }
     } catch {
@@ -46,37 +53,31 @@ function SignInForm() {
       `}</style>
 
       <div style={{ width: "100%", maxWidth: 400, padding: "0 24px" }}>
-        {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 40 }}>
           <Link href="/" style={{ textDecoration: "none" }}>
             <div style={{ fontSize: 28, fontWeight: 700, color: "#f0f4ff", letterSpacing: "-0.5px" }}>◆ LMS</div>
           </Link>
           <div style={{ fontSize: 11, letterSpacing: "1.5px", textTransform: "uppercase", color: "#5a7aff", fontFamily: "'IBM Plex Mono', monospace", marginTop: 8 }}>
-            Admin Sign In
+            Sign In
           </div>
         </div>
 
-        {/* Card */}
         <div style={{ background: "#0c0e14", border: "1px solid #1e2433", borderRadius: 12, padding: "32px" }}>
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#7a90bc", marginBottom: 8, letterSpacing: "0.3px" }}>
-                Email
-              </label>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#7a90bc", marginBottom: 8 }}>Email</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="admin@example.com"
+                placeholder="you@example.com"
                 required
                 style={{ width: "100%", background: "#111520", border: "1px solid #2a3347", borderRadius: 6, padding: "10px 14px", fontSize: 14, color: "#e2e8f0", transition: "border-color 0.15s", fontFamily: "'IBM Plex Sans', sans-serif" }}
               />
             </div>
 
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#7a90bc", marginBottom: 8, letterSpacing: "0.3px" }}>
-                Password
-              </label>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#7a90bc", marginBottom: 8 }}>Password</label>
               <input
                 type="password"
                 value={password}
@@ -104,7 +105,7 @@ function SignInForm() {
         </div>
 
         <p style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "#3a4a68" }}>
-          Default: <span style={{ fontFamily: "'IBM Plex Mono', monospace", color: "#4a5568" }}>admin@demo.com</span>
+          Admin: <span style={{ fontFamily: "'IBM Plex Mono', monospace", color: "#4a5568" }}>admin@demo.com</span> / <span style={{ fontFamily: "'IBM Plex Mono', monospace", color: "#4a5568" }}>admin123</span>
         </p>
       </div>
     </div>
