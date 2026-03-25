@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
 
     // ---- Persist to database (skipped when DB unavailable) ----------------
     const prisma = await getPrisma();
-    let packageDbId = packageId;
+    let packageDbId: string = packageId;
 
     if (prisma) {
       if (tenantId === DEV_TENANT_ID) await ensureDevTenant(prisma);
