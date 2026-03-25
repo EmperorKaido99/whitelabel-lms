@@ -14,6 +14,11 @@ node_modules/
 /prisma/*.db
 /prisma/*.db-journal
 
+# runtime / generated
+/data/
+/public/
+.claude/
+
 # misc
 .DS_Store
 *.pem
