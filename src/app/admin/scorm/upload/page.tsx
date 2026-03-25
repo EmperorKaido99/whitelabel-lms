@@ -12,6 +12,7 @@ type UploadStage =
   | "error";
 
 interface ValidationResult {
+  packageId: string;
   version: "1.2" | "2004" | "unknown";
   title: string;
   entryPoint: string;
@@ -117,8 +118,32 @@ export default function ScormUploadPage() {
 
   const handlePublish = async () => {
     if (!validation || !courseTitle.trim()) return;
-    alert(`Package "${courseTitle}" published to course catalog.`);
-    router.push("/admin");
+
+    try {
+      const res = await fetch("/api/admin/packages/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          packageId: validation.packageId ?? (file?.name.replace(/\.zip$/i, "") ?? "unknown"),
+          title: courseTitle.trim(),
+          entryPoint: validation.entryPoint,
+          version: validation.version,
+          fileCount: validation.scormFiles,
+        }),
+      });
+
+      const body = await res.json();
+      if (!res.ok) {
+        setErrorMsg(typeof body.error === "string" ? body.error : "Publish failed.");
+        setStage("error");
+        return;
+      }
+
+      router.push("/catalog");
+    } catch {
+      setErrorMsg("Could not reach the server. Make sure the dev server is running.");
+      setStage("error");
+    }
   };
 
   const reset = () => {
