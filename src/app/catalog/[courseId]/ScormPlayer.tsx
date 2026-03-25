@@ -24,39 +24,39 @@ export default function ScormPlayer({
   const [apiReady, setApiReady] = useState(false);
   const scriptInjected = useRef(false);
 
-  // Inject the SCORM runtime API onto window before the iframe loads
+  // Inject both SCORM 1.2 and SCORM 2004 APIs onto window before the iframe loads.
+  // Some packages declare SCORM 2004 in their manifest but their scormdriver is
+  // configured to use SCORM 1.2 (strLMSStandard="SCORM"), so we always set both.
   useEffect(() => {
     if (scriptInjected.current) return;
     scriptInjected.current = true;
 
-    const src =
-      course.version === "2004"
-        ? "/scorm-runtime/scorm2004.min.js"
-        : "/scorm-runtime/scorm12.min.js";
+    let loaded = 0;
+    const onBothLoaded = () => {
+      loaded++;
+      if (loaded < 2) return;
+      const w = window as unknown as Record<string, new (cfg: object) => unknown>;
+      if (w["Scorm12API"])  (window as unknown as Record<string, unknown>)["API"]         = new w["Scorm12API"]({});
+      if (w["Scorm2004API"]) (window as unknown as Record<string, unknown>)["API_1484_11"] = new w["Scorm2004API"]({});
+      setApiReady(true);
+    };
 
-    const script = document.createElement("script");
-    script.src = src;
-    script.onload = () => {
-      if (course.version === "2004") {
-        // scorm2004.min.js sets window.Scorm2004API
-        (window as unknown as Record<string, unknown>)["API_1484_11"] =
-          new (window as unknown as { Scorm2004API: new (cfg: object) => unknown })
-            .Scorm2004API({ autocommit: true, autocommitSeconds: 10 });
-      } else {
-        // scorm12.min.js sets window.Scorm12API
-        (window as unknown as Record<string, unknown>)["API"] =
-          new (window as unknown as { Scorm12API: new (cfg: object) => unknown })
-            .Scorm12API({ autocommit: true, autocommitSeconds: 10 });
+    const onError = () => {
+      loaded++;
+      if (loaded >= 2) {
+        console.warn("[scorm-player] One or both SCORM runtime scripts failed to load");
+        setApiReady(true);
       }
-      setApiReady(true);
     };
-    script.onerror = () => {
-      // Still allow the iframe to load even if the API fails
-      console.warn("[scorm-player] SCORM runtime script failed to load");
-      setApiReady(true);
-    };
-    document.head.appendChild(script);
-  }, [course.version]);
+
+    for (const src of ["/scorm-runtime/scorm12.min.js", "/scorm-runtime/scorm2004.min.js"]) {
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = onBothLoaded;
+      s.onerror = onError;
+      document.head.appendChild(s);
+    }
+  }, []);
 
   const publishedDate = new Date(course.publishedAt).toLocaleDateString("en-US", {
     year: "numeric",
