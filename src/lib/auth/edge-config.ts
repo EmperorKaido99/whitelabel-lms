@@ -4,6 +4,7 @@ import type { NextAuthConfig } from "next-auth";
 // Used exclusively in middleware for JWT validation.
 export const edgeAuthConfig: NextAuthConfig = {
   providers: [],
+  session: { strategy: "jwt" },
   pages: { signIn: "/auth" },
   callbacks: {
     session({ session, token }) {
