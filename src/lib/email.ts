@@ -121,3 +121,42 @@ export async function sendCompletionEmail(
     });
   }
 }
+
+// ─── Due-date reminder ──────────────────────────────────────────────────────
+
+export async function sendDueDateReminderEmail(
+  to: string,
+  name: string,
+  courseTitle: string,
+  dueDate: Date,
+  overdue: boolean,
+): Promise<void> {
+  const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+  const daysDiff = Math.ceil(Math.abs(dueDate.getTime() - Date.now()) / 86400000);
+  const subject = overdue
+    ? `Overdue: "${courseTitle}" was due ${daysDiff} day${daysDiff === 1 ? "" : "s"} ago`
+    : `Reminder: "${courseTitle}" is due in ${daysDiff} day${daysDiff === 1 ? "" : "s"}`;
+
+  await sendEmail({
+    to,
+    subject,
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;background:#0c0e14;color:#e2e8f0;border-radius:10px;">
+        <h1 style="font-size:20px;font-weight:600;color:${overdue ? "#f87171" : "#fbbf24"};margin-bottom:8px;">
+          ${overdue ? "⚠ Overdue Course" : "⏰ Course Reminder"}
+        </h1>
+        <p style="color:#7a90bc;line-height:1.6;margin-bottom:8px;">Hi ${name || to},</p>
+        <p style="color:#7a90bc;line-height:1.6;margin-bottom:24px;">
+          ${overdue
+            ? `Your course <strong style="color:#c5d0e8;">${courseTitle}</strong> was due on <strong>${dueDate.toLocaleDateString()}</strong> and has not been completed yet.`
+            : `Your course <strong style="color:#c5d0e8;">${courseTitle}</strong> is due on <strong>${dueDate.toLocaleDateString()}</strong>. Don't forget to complete it!`
+          }
+        </p>
+        <a href="${baseUrl}/dashboard"
+           style="display:inline-block;background:#5a7aff;color:#fff;padding:10px 24px;border-radius:6px;text-decoration:none;font-weight:500;">
+          Go to My Dashboard
+        </a>
+      </div>
+    `,
+  });
+}

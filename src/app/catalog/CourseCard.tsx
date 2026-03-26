@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export interface CatalogCourse {
   id: string;
@@ -8,13 +9,41 @@ export interface CatalogCourse {
   title: string;
   description?: string;
   categories?: string[];
+  imageUrl?: string;
   entryPoint: string;
   version: string;
   fileCount: number;
   publishedAt: string;
 }
 
+function StarDisplay({ avg, count }: { avg: number; count: number }) {
+  const full = Math.floor(avg);
+  const half = avg - full >= 0.25 && avg - full < 0.75;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <span style={{ fontSize: 12, letterSpacing: "-1px" }}>
+        {[1, 2, 3, 4, 5].map(n => (
+          <span key={n} style={{ color: n <= full ? "#fbbf24" : (n === full + 1 && half) ? "#fbbf24" : "#2a3347", opacity: (n === full + 1 && half) ? 0.5 : 1 }}>★</span>
+        ))}
+      </span>
+      <span style={{ fontSize: 11, color: "#7a90bc", fontFamily: "'IBM Plex Mono', monospace" }}>
+        {avg.toFixed(1)} <span style={{ color: "#3a4a68" }}>({count})</span>
+      </span>
+    </div>
+  );
+}
+
 export default function CourseCard({ course, index }: { course: CatalogCourse; index: number }) {
+  const [rating, setRating] = useState<{ avg: number; count: number } | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/ratings?courseId=${encodeURIComponent(course.id)}`)
+      .then(r => r.json())
+      .then((d: { avg: number | null; count: number }) => {
+        if (d.avg != null && d.count > 0) setRating({ avg: d.avg, count: d.count });
+      })
+      .catch(() => {/* ignore */});
+  }, [course.id]);
   const colors = [
     { accent: "#5a7aff", bg: "rgba(90,122,255,0.08)", border: "rgba(90,122,255,0.15)" },
     { accent: "#22d3ee", bg: "rgba(34,211,238,0.08)", border: "rgba(34,211,238,0.15)" },
@@ -44,7 +73,14 @@ export default function CourseCard({ course, index }: { course: CatalogCourse; i
           (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
         }}
       >
-        <div style={{ height: 4, background: `linear-gradient(90deg, ${color.accent}, transparent)` }} />
+        {/* Thumbnail or accent bar */}
+        {course.imageUrl ? (
+          <div style={{ height: 140, background: `url(${course.imageUrl}) center/cover no-repeat`, position: "relative" }}>
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to bottom, transparent 40%, rgba(17,21,32,0.9))" }} />
+          </div>
+        ) : (
+          <div style={{ height: 4, background: `linear-gradient(90deg, ${color.accent}, transparent)` }} />
+        )}
 
         <div style={{ padding: "20px 22px 22px" }}>
           {/* Version + categories */}
@@ -75,6 +111,12 @@ export default function CourseCard({ course, index }: { course: CatalogCourse; i
             </span>
             <span style={{ fontSize: 12, color: "#3a4a68" }}>Published {publishedDate}</span>
           </div>
+
+          {rating && (
+            <div style={{ marginBottom: 14 }}>
+              <StarDisplay avg={rating.avg} count={rating.count} />
+            </div>
+          )}
 
           <div style={{ display: "flex", alignItems: "center", gap: 6, color: color.accent, fontSize: 13, fontWeight: 500 }}>
             <span>Launch Course</span>

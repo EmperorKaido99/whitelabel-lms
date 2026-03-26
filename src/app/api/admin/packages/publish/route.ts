@@ -11,6 +11,7 @@ export interface CatalogCourse {
   title: string;
   description?: string;
   categories?: string[];
+  imageUrl?: string;
   entryPoint: string;
   version: string;
   fileCount: number;
@@ -37,7 +38,7 @@ async function writeCatalog(courses: CatalogCourse[]): Promise<void> {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { packageId, title, description, categories, entryPoint, version, fileCount } = body;
+    const { packageId, title, description, categories, imageUrl, entryPoint, version, fileCount } = body;
 
     if (!packageId || !title || !entryPoint) {
       return NextResponse.json(
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
       title: title.trim(),
       description: description?.trim() ?? undefined,
       categories: Array.isArray(categories) ? categories : [],
+      imageUrl: imageUrl?.trim() || undefined,
       entryPoint,
       version: version ?? "unknown",
       fileCount: fileCount ?? 0,
@@ -92,6 +94,7 @@ export async function POST(req: NextRequest) {
             title: course.title,
             description: course.description ?? null,
             categories: JSON.stringify(course.categories ?? []),
+            imageUrl: course.imageUrl ?? null,
             status: "published",
           },
           create: {
@@ -99,10 +102,32 @@ export async function POST(req: NextRequest) {
             title: course.title,
             description: course.description ?? null,
             categories: JSON.stringify(course.categories ?? []),
+            imageUrl: course.imageUrl ?? null,
             status: "published",
             tenantId,
           },
         });
+
+        // Create a Module record for this SCORM package if one doesn't exist yet
+        const existingModule = await prisma.module.findFirst({
+          where: { courseId: packageId, tenantId },
+        });
+        if (!existingModule) {
+          await prisma.module.create({
+            data: {
+              courseId: packageId,
+              tenantId,
+              order: 1,
+              type: "scorm",
+              content: JSON.stringify({
+                packageId,
+                entryPoint: course.entryPoint,
+                version: course.version,
+                title: course.title,
+              }),
+            },
+          });
+        }
       }
     } catch (dbErr) {
       console.warn("[publish] DB upsert failed (continuing):", dbErr);

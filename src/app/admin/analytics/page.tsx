@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { readFile } from "fs/promises";
 import path from "path";
+import RemindersButton from "./RemindersButton";
 
 interface CatalogCourse {
   id: string;
@@ -15,6 +16,8 @@ interface CourseStats {
   completions: number;
   avgScore: number | null;
   avgTimeSpent: number | null; // seconds
+  avgRating: number | null;
+  ratingCount: number;
 }
 
 async function getAnalytics() {
@@ -30,9 +33,10 @@ async function getAnalytics() {
   // Load from DB
   const { prisma } = await import("@/adapters/db");
 
-  const enrollments = await prisma.enrollment.findMany({
-    include: { progress: true, user: true },
-  });
+  const [enrollments, allRatings] = await Promise.all([
+    prisma.enrollment.findMany({ include: { progress: true, user: true } }),
+    prisma.courseRating.findMany(),
+  ]);
 
   const uniqueLearners = new Set(enrollments.map(e => e.userId)).size;
   const totalCompletions = enrollments.filter(e => e.status === "completed").length;
@@ -51,12 +55,19 @@ async function getAnalytics() {
       .filter((t): t is number => t != null);
     const avgTimeSpent = times.length > 0 ? times.reduce((a, b) => a + b, 0) / times.length : null;
 
+    const courseRatings = allRatings.filter(r => r.courseId === course.id);
+    const avgRating = courseRatings.length > 0
+      ? Math.round((courseRatings.reduce((s, r) => s + r.rating, 0) / courseRatings.length) * 10) / 10
+      : null;
+
     return {
       course,
       enrollments: courseEnrollments.length,
       completions,
       avgScore,
       avgTimeSpent,
+      avgRating,
+      ratingCount: courseRatings.length,
     };
   });
 
@@ -86,15 +97,54 @@ export default async function AnalyticsPage() {
           <Link href="/admin" style={{ color: "#4a5568", fontSize: 13, textDecoration: "none" }}>Admin</Link>
           <span style={{ color: "#5a7aff", fontSize: 13, fontWeight: 500 }}>Analytics</span>
         </div>
-        <Link href="/admin/learners" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5 }}>
-          Manage Learners
-        </Link>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Link href="/admin/ratings" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5 }}>Ratings</Link>
+          <Link href="/admin/groups" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5 }}>Groups</Link>
+          <Link href="/admin/learners" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5 }}>Manage Learners</Link>
+        </div>
       </nav>
 
       <main style={{ padding: "40px", maxWidth: 1100, margin: "0 auto" }}>
-        <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 11, letterSpacing: "1.5px", textTransform: "uppercase", color: "#5a7aff", fontFamily: "'IBM Plex Mono', monospace", marginBottom: 8 }}>Reports</div>
-          <h1 style={{ fontSize: 28, fontWeight: 600, color: "#f0f4ff", letterSpacing: "-0.5px" }}>Analytics</h1>
+        <div style={{ marginBottom: 32, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ fontSize: 11, letterSpacing: "1.5px", textTransform: "uppercase", color: "#5a7aff", fontFamily: "'IBM Plex Mono', monospace", marginBottom: 8 }}>Reports</div>
+            <h1 style={{ fontSize: 28, fontWeight: 600, color: "#f0f4ff", letterSpacing: "-0.5px" }}>Analytics</h1>
+          <RemindersButton />
+          </div>
+
+          {/* Export buttons — plain anchor tags so Next.js does not need client JS */}
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: "#3a4a68", fontFamily: "'IBM Plex Mono', monospace", marginRight: 4 }}>EXPORT</span>
+            {[
+              { label: "Learners", type: "learners" },
+              { label: "Enrollments", type: "enrollments" },
+              { label: "Progress", type: "progress" },
+            ].map(({ label, type }) => (
+              <a
+                key={type}
+                href={`/api/admin/export?type=${type}`}
+                download
+                style={{
+                  fontSize: 12,
+                  color: "#7a90bc",
+                  textDecoration: "none",
+                  border: "1px solid #2a3347",
+                  borderRadius: 5,
+                  padding: "6px 12px",
+                  background: "#0c0e14",
+                  fontFamily: "'IBM Plex Sans', sans-serif",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                }}
+              >
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                  <path d="M5.5 1v6M2.5 7l3 3 3-3M1 10h9" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                {label} CSV
+              </a>
+            ))}
+          </div>
         </div>
 
         {/* Totals */}
@@ -122,8 +172,8 @@ export default async function AnalyticsPage() {
           </div>
 
           {/* Header */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 110px 110px 120px 120px 100px", padding: "10px 24px", borderBottom: "1px solid #13161f", background: "#080a0f" }}>
-            {["Course", "Enrollments", "Completions", "Completion %", "Avg Score", "Avg Time"].map(h => (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 110px 110px 120px 110px 90px 100px", padding: "10px 24px", borderBottom: "1px solid #13161f", background: "#080a0f" }}>
+            {["Course", "Enrollments", "Completions", "Completion %", "Avg Score", "Rating", "Avg Time"].map(h => (
               <span key={h} style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.8px", textTransform: "uppercase", color: "#3a4a68", fontFamily: "'IBM Plex Mono', monospace" }}>{h}</span>
             ))}
           </div>
@@ -136,7 +186,7 @@ export default async function AnalyticsPage() {
           ) : courseStats.map((s, i) => {
             const completionPct = s.enrollments > 0 ? Math.round((s.completions / s.enrollments) * 100) : 0;
             return (
-              <div key={s.course.id} style={{ display: "grid", gridTemplateColumns: "1fr 110px 110px 120px 120px 100px", padding: "14px 24px", borderBottom: i < courseStats.length - 1 ? "1px solid #13161f" : "none", alignItems: "center" }}>
+              <div key={s.course.id} style={{ display: "grid", gridTemplateColumns: "1fr 110px 110px 120px 110px 90px 100px", padding: "14px 24px", borderBottom: i < courseStats.length - 1 ? "1px solid #13161f" : "none", alignItems: "center" }}>
                 <div>
                   <Link href={`/catalog/${s.course.id}`} style={{ fontSize: 14, fontWeight: 500, color: "#c5d0e8", textDecoration: "none" }}>
                     {s.course.title}
@@ -156,6 +206,17 @@ export default async function AnalyticsPage() {
                 <span style={{ fontSize: 14, color: s.avgScore != null ? "#c5d0e8" : "#3a4a68", fontFamily: "'IBM Plex Mono', monospace" }}>
                   {s.avgScore != null ? `${Math.round(s.avgScore)}%` : "—"}
                 </span>
+                <div>
+                  {s.avgRating != null ? (
+                    <Link href="/admin/ratings" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 4 }}>
+                      <span style={{ color: "#fbbf24", fontSize: 12 }}>★</span>
+                      <span style={{ fontSize: 13, color: "#fbbf24", fontFamily: "'IBM Plex Mono', monospace" }}>{s.avgRating.toFixed(1)}</span>
+                      <span style={{ fontSize: 11, color: "#3a4a68" }}>({s.ratingCount})</span>
+                    </Link>
+                  ) : (
+                    <span style={{ fontSize: 13, color: "#3a4a68", fontFamily: "'IBM Plex Mono', monospace" }}>—</span>
+                  )}
+                </div>
                 <span style={{ fontSize: 14, color: s.avgTimeSpent != null ? "#c5d0e8" : "#3a4a68", fontFamily: "'IBM Plex Mono', monospace" }}>
                   {s.avgTimeSpent != null ? formatTime(s.avgTimeSpent) : "—"}
                 </span>

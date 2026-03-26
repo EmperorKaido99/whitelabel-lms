@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { signOut } from "next-auth/react";
 
 interface PrereqCourse { id: string; title: string; }
@@ -10,6 +11,7 @@ interface EnrollmentRow {
   courseId: string;
   status: string;
   createdAt: string;
+  dueDate: string | null;
   courseTitle: string;
   courseDescription?: string;
   categories: string[];
@@ -42,9 +44,11 @@ export default function DashboardClient({
   enrollments: EnrollmentRow[];
   learnerName: string;
 }) {
+  const now = Date.now();
   const completed = enrollments.filter(e => e.status === "completed");
   const inProgress = enrollments.filter(e => e.status !== "completed" && !e.locked);
   const locked = enrollments.filter(e => e.locked);
+  const overdueCount = inProgress.filter(e => e.dueDate && new Date(e.dueDate).getTime() < now).length;
   const avgScore = completed.filter(e => e.score != null).length > 0
     ? Math.round(completed.filter(e => e.score != null).reduce((s, e) => s + e.score!, 0) / completed.filter(e => e.score != null).length)
     : null;
@@ -64,6 +68,7 @@ export default function DashboardClient({
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <Link href="/catalog" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5 }}>Browse Catalog</Link>
+          <Link href="/profile" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5 }}>Profile</Link>
           <button onClick={() => signOut({ callbackUrl: "/auth" })} style={{ background: "transparent", color: "#7a90bc", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5, fontSize: 13, cursor: "pointer", fontFamily: "'IBM Plex Sans', sans-serif" }}>
             Sign Out
           </button>
@@ -82,7 +87,7 @@ export default function DashboardClient({
             { label: "Enrolled", value: enrollments.length, icon: "📚", accent: "#5a7aff" },
             { label: "In Progress", value: inProgress.length, icon: "▶", accent: "#22d3ee" },
             { label: "Completed", value: completed.length, icon: "✅", accent: "#4ade80" },
-            { label: "Avg Score", value: avgScore != null ? `${avgScore}%` : "—", icon: "🎯", accent: "#a78bfa" },
+            { label: overdueCount > 0 ? "Overdue" : "Avg Score", value: overdueCount > 0 ? overdueCount : (avgScore != null ? `${avgScore}%` : "—"), icon: overdueCount > 0 ? "⚠" : "🎯", accent: overdueCount > 0 ? "#f87171" : "#a78bfa" },
           ].map(s => (
             <div key={s.label} style={{ background: "#0c0e14", border: "1px solid #1e2433", borderRadius: 10, padding: "18px 20px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -141,6 +146,112 @@ function Section({ title, count, children }: { title: string; count: number; chi
   );
 }
 
+function StarRating({ courseId }: { courseId: string }) {
+  const [hover, setHover] = useState(0);
+  const [selected, setSelected] = useState(0);
+  const [savedRating, setSavedRating] = useState(0);  // what's already in DB
+  const [comment, setComment] = useState("");
+  const [showComment, setShowComment] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [done, setDone] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Load existing rating on mount
+  useEffect(() => {
+    fetch(`/api/ratings?courseId=${encodeURIComponent(courseId)}`)
+      .then(r => r.json())
+      .then((data: { mine?: { rating: number; comment: string | null } | null }) => {
+        if (data.mine) {
+          setSavedRating(data.mine.rating);
+          setSelected(data.mine.rating);
+          setComment(data.mine.comment ?? "");
+        }
+      })
+      .catch(() => {/* ignore */})
+      .finally(() => setLoading(false));
+  }, [courseId]);
+
+  const submit = async () => {
+    if (!selected) return;
+    setSubmitting(true);
+    await fetch("/api/ratings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ courseId, rating: selected, comment }),
+    });
+    setSavedRating(selected);
+    setSubmitting(false);
+    setDone(true);
+    setTimeout(() => setDone(false), 3000);
+    setShowComment(false);
+  };
+
+  if (loading) return null;
+
+  const isUpdate = savedRating > 0;
+  const label = isUpdate ? "Your rating:" : "Rate this course:";
+
+  return (
+    <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px solid #13161f" }}>
+      <div style={{ fontSize: 11, color: "#3a4a68", marginBottom: 6, fontFamily: "'IBM Plex Mono', monospace", letterSpacing: "0.5px", textTransform: "uppercase" }}>
+        {label}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 2, marginBottom: showComment ? 10 : 0 }}>
+        {[1, 2, 3, 4, 5].map(n => (
+          <button
+            key={n}
+            onMouseEnter={() => setHover(n)}
+            onMouseLeave={() => setHover(0)}
+            onClick={() => { setSelected(n); setShowComment(true); }}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              fontSize: 20, lineHeight: 1, padding: "0 2px",
+              color: n <= (hover || selected) ? "#fbbf24" : "#2a3347",
+              transition: "color 0.1s",
+            }}
+          >★</button>
+        ))}
+        {isUpdate && !showComment && (
+          <button
+            onClick={() => setShowComment(true)}
+            style={{ marginLeft: 8, fontSize: 11, color: "#5a7aff", background: "none", border: "none", cursor: "pointer", textDecoration: "underline", fontFamily: "'IBM Plex Sans', sans-serif" }}
+          >
+            Edit
+          </button>
+        )}
+        {done && (
+          <span style={{ marginLeft: 8, fontSize: 12, color: "#4ade80" }}>
+            {isUpdate ? "Updated!" : "Thanks!"}
+          </span>
+        )}
+      </div>
+      {showComment && (
+        <div style={{ display: "flex", gap: 6 }}>
+          <input
+            value={comment}
+            onChange={e => setComment(e.target.value)}
+            placeholder="Leave a comment (optional)…"
+            style={{ flex: 1, background: "#111520", border: "1px solid #2a3347", borderRadius: 4, padding: "6px 10px", fontSize: 12, color: "#e2e8f0", fontFamily: "'IBM Plex Sans', sans-serif" }}
+          />
+          <button
+            onClick={submit}
+            disabled={!selected || submitting}
+            style={{ background: "#5a7aff", color: "#fff", border: "none", borderRadius: 4, padding: "6px 14px", fontSize: 12, cursor: submitting ? "not-allowed" : "pointer", fontFamily: "'IBM Plex Sans', sans-serif", opacity: submitting ? 0.7 : 1 }}
+          >
+            {submitting ? "…" : isUpdate ? "Update" : "Submit"}
+          </button>
+          <button
+            onClick={() => { setShowComment(false); setSelected(savedRating); }}
+            style={{ background: "none", border: "1px solid #2a3347", color: "#4a5568", borderRadius: 4, padding: "6px 10px", fontSize: 12, cursor: "pointer", fontFamily: "'IBM Plex Sans', sans-serif" }}
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CourseCard({ enrollment: e, index, completed, isLocked }: { enrollment: EnrollmentRow; index: number; completed?: boolean; isLocked?: boolean }) {
   const colors = [
     { accent: "#5a7aff", bg: "rgba(90,122,255,0.06)", border: "rgba(90,122,255,0.12)" },
@@ -181,6 +292,18 @@ function CourseCard({ enrollment: e, index, completed, isLocked }: { enrollment:
             {e.timeSpent != null && <span style={{ fontSize: 12, color: "#4a5568", fontFamily: "'IBM Plex Mono', monospace" }}>{formatTime(e.timeSpent)} spent</span>}
             {e.completedAt && <span style={{ fontSize: 12, color: "#4a5568" }}>Completed {timeAgo(e.completedAt)}</span>}
             {!e.completedAt && <span style={{ fontSize: 12, color: "#4a5568" }}>Enrolled {timeAgo(e.createdAt)}</span>}
+            {e.dueDate && !e.completedAt && (() => {
+              const due = new Date(e.dueDate);
+              const msLeft = due.getTime() - Date.now();
+              const daysLeft = Math.ceil(msLeft / 86400000);
+              const overdue = msLeft < 0;
+              const soon = !overdue && daysLeft <= 3;
+              return (
+                <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 3, fontFamily: "'IBM Plex Mono', monospace", background: overdue ? "rgba(239,68,68,0.12)" : soon ? "rgba(250,204,21,0.12)" : "rgba(74,85,104,0.1)", color: overdue ? "#f87171" : soon ? "#fbbf24" : "#4a5568", border: `1px solid ${overdue ? "rgba(239,68,68,0.2)" : soon ? "rgba(250,204,21,0.2)" : "rgba(74,85,104,0.15)"}` }}>
+                  {overdue ? `Overdue ${Math.abs(daysLeft)}d` : daysLeft === 0 ? "Due today" : `Due in ${daysLeft}d`}
+                </span>
+              );
+            })()}
           </div>
         )}
 
@@ -205,6 +328,7 @@ function CourseCard({ enrollment: e, index, completed, isLocked }: { enrollment:
             </Link>
           )}
         </div>
+        {completed && <StarRating courseId={e.courseId} />}
       </div>
     </div>
   );

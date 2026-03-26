@@ -1,7 +1,21 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "crypto";
+import { checkRateLimit } from "@/lib/rate-limit";
+
+// 5 requests per 15 minutes per IP
+const WINDOW_MS = 15 * 60 * 1000;
+const MAX_REQUESTS = 5;
 
 export async function POST(req: Request) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const rl = checkRateLimit(`forgot:${ip}`, MAX_REQUESTS, WINDOW_MS);
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: `Too many requests. Please try again in ${rl.retryAfter} seconds.` },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } }
+    );
+  }
+
   try {
     const { email } = await req.json();
     if (!email) return NextResponse.json({ error: "Email required" }, { status: 400 });

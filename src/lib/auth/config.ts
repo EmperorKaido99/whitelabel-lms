@@ -4,6 +4,7 @@ import type { NextAuthConfig } from "next-auth";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const authConfig: NextAuthConfig = {
   session: { strategy: "jwt" },
@@ -17,6 +18,15 @@ export const authConfig: NextAuthConfig = {
       async authorize(credentials) {
         try {
           if (!credentials?.email || !credentials?.password) return null;
+
+          // Rate limit: 10 attempts per 15 minutes per email address
+          const emailKey = `login:${String(credentials.email).toLowerCase()}`;
+          const rl = checkRateLimit(emailKey, 10, 15 * 60 * 1000);
+          if (!rl.allowed) {
+            console.warn("[auth] rate limit hit for:", credentials.email);
+            return null;
+          }
+
           const user = await prisma.user.findFirst({
             where: { email: credentials.email as string },
           });

@@ -29,9 +29,11 @@ model User {
   tenantId  String
   createdAt DateTime @default(now())
 
-  tenant               Tenant               @relation(fields: [tenantId], references: [id])
-  enrollments          Enrollment[]
-  passwordResetTokens  PasswordResetToken[]
+  tenant              Tenant               @relation(fields: [tenantId], references: [id])
+  enrollments         Enrollment[]
+  passwordResetTokens PasswordResetToken[]
+  groupMembers        GroupMember[]
+  ratings             CourseRating[]
 
   @@unique([email, tenantId])
 }
@@ -41,6 +43,7 @@ model Course {
   title       String
   description String?
   categories  String   @default("[]")
+  imageUrl    String?
   status      String   @default("draft")
   tenantId    String
   createdAt   DateTime @default(now())
@@ -71,12 +74,13 @@ model Package {
 }
 
 model Enrollment {
-  id        String   @id @default(cuid())
-  status    String   @default("enrolled")
+  id        String    @id @default(cuid())
+  status    String    @default("enrolled")
   userId    String
   courseId  String
   tenantId  String
-  createdAt DateTime @default(now())
+  dueDate   DateTime?
+  createdAt DateTime  @default(now())
 
   user     User       @relation(fields: [userId], references: [id])
   course   Course     @relation(fields: [courseId], references: [id])
@@ -117,4 +121,58 @@ model AuditLog {
   metadata   String   @default("{}")
   tenantId   String?
   createdAt  DateTime @default(now())
+}
+
+// ─── Groups / Cohorts ───────────────────────────────────────────────────────
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  tenantId    String
+  createdAt   DateTime @default(now())
+
+  members GroupMember[]
+  courses GroupCourse[]
+}
+
+model GroupMember {
+  id       String @id @default(cuid())
+  groupId  String
+  userId   String
+  tenantId String
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
+}
+
+model GroupCourse {
+  id         String    @id @default(cuid())
+  groupId    String
+  courseId   String
+  tenantId   String
+  dueDate    DateTime?
+  assignedAt DateTime  @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, courseId])
+}
+
+// ─── Course Ratings ─────────────────────────────────────────────────────────
+
+model CourseRating {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  tenantId  String
+  rating    Int      // 1–5
+  comment   String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, courseId])
 }

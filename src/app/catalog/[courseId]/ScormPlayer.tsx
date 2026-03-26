@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import ContentPlayer from "./ContentPlayer";
 
 interface CatalogCourse {
   id: string;
@@ -13,9 +14,28 @@ interface CatalogCourse {
   publishedAt: string;
 }
 
+interface CourseModule {
+  id: string;
+  order: number;
+  type: string;
+  content: string; // JSON: { packageId, entryPoint, version, title }
+}
+
+interface ModuleContent {
+  packageId?: string;
+  entryPoint?: string;
+  version?: string;
+  title?: string;
+}
+
 type ScormApi = Record<string, (...args: unknown[]) => unknown> & {
   cmi?: Record<string, unknown>;
+  loadFromJSON?: (json: Record<string, unknown>, CMIElement?: string) => void;
 };
+
+function parseModuleContent(raw: string): ModuleContent {
+  try { return JSON.parse(raw); } catch { return {}; }
+}
 
 function saveProgress(courseId: string, api: ScormApi, version: "1.2" | "2004") {
   try {
@@ -60,18 +80,32 @@ function saveProgress(courseId: string, api: ScormApi, version: "1.2" | "2004") 
 export default function ScormPlayer({
   course,
   scormUrl,
+  modules = [],
 }: {
   course: CatalogCourse;
   scormUrl: string;
+  modules?: CourseModule[];
 }) {
+  const multiModule = modules.length > 1;
+
+  // Active module index (only relevant when multiModule)
+  const [activeModuleIdx, setActiveModuleIdx] = useState(0);
+  const activeModule = multiModule ? modules[activeModuleIdx] : null;
+  const activeContent = activeModule ? parseModuleContent(activeModule.content) : null;
+
+  // Derive the actual SCORM URL: use module's package if multi-module, otherwise fall back to course default
+  const activeScormUrl = activeContent?.packageId && activeContent?.entryPoint
+    ? `/scorm/${activeContent.packageId}/${activeContent.entryPoint}`
+    : scormUrl;
+
   const [loaded, setLoaded] = useState(false);
   const [apiReady, setApiReady] = useState(false);
+  const [resumed, setResumed] = useState(false);
   const scriptInjected = useRef(false);
+  // Track which moduleIdx the current API was initialised for
+  const apiModuleIdx = useRef(-1);
 
-  useEffect(() => {
-    if (scriptInjected.current) return;
-    scriptInjected.current = true;
-
+  const initScormApis = useCallback((savedCmi: Record<string, unknown> | null) => {
     let loadCount = 0;
     const onBothLoaded = () => {
       loadCount++;
@@ -81,7 +115,9 @@ export default function ScormPlayer({
 
       if (w["Scorm12API"]) {
         const api = new w["Scorm12API"]({});
-        // Wrap commit/finish to persist progress
+        if (savedCmi && typeof api.loadFromJSON === "function") {
+          try { api.loadFromJSON(savedCmi, ""); } catch { /* non-critical */ }
+        }
         const origCommit = api["LMSCommit"]?.bind(api);
         const origFinish = api["LMSFinish"]?.bind(api);
         if (origCommit) {
@@ -103,6 +139,9 @@ export default function ScormPlayer({
 
       if (w["Scorm2004API"]) {
         const api = new w["Scorm2004API"]({});
+        if (savedCmi && typeof api.loadFromJSON === "function") {
+          try { api.loadFromJSON(savedCmi, ""); } catch { /* non-critical */ }
+        }
         const origCommit = api["Commit"]?.bind(api);
         const origTerminate = api["Terminate"]?.bind(api);
         if (origCommit) {
@@ -142,6 +181,88 @@ export default function ScormPlayer({
     }
   }, [course.id]);
 
+  // Initial load — fetch saved progress, then boot the SCORM runtime
+  useEffect(() => {
+    if (scriptInjected.current) return;
+    scriptInjected.current = true;
+    apiModuleIdx.current = activeModuleIdx;
+
+    fetch(`/api/progress?courseId=${encodeURIComponent(course.id)}`)
+      .then(r => r.json())
+      .then((data: unknown) => {
+        const record = Array.isArray(data) ? data[0] : data;
+        let savedCmi: Record<string, unknown> | null = null;
+        if (record && typeof record === "object" && "cmi" in record) {
+          const raw = (record as { cmi: string }).cmi;
+          try {
+            const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+            if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+              savedCmi = parsed as Record<string, unknown>;
+              setResumed(true);
+            }
+          } catch { /* ignore malformed CMI */ }
+        }
+        initScormApis(savedCmi);
+      })
+      .catch(() => initScormApis(null));
+  }, [course.id, initScormApis]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When the learner switches modules, reset the player for the new module
+  const switchModule = useCallback((idx: number) => {
+    if (idx === activeModuleIdx) return;
+    setLoaded(false);
+    setResumed(false);
+    setApiReady(false);
+    apiModuleIdx.current = idx;
+    setActiveModuleIdx(idx);
+
+    const modContent = parseModuleContent(modules[idx]?.content ?? "{}");
+    const targetCourseId = modContent.packageId ?? course.id;
+
+    fetch(`/api/progress?courseId=${encodeURIComponent(targetCourseId)}`)
+      .then(r => r.json())
+      .then((data: unknown) => {
+        const record = Array.isArray(data) ? data[0] : data;
+        let savedCmi: Record<string, unknown> | null = null;
+        if (record && typeof record === "object" && "cmi" in record) {
+          const raw = (record as { cmi: string }).cmi;
+          try {
+            const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+            if (parsed && typeof parsed === "object" && Object.keys(parsed).length > 0) {
+              savedCmi = parsed as Record<string, unknown>;
+              setResumed(true);
+            }
+          } catch { /* ignore */ }
+        }
+        // Re-init the SCORM API instances for the new module
+        const w = window as unknown as Record<string, new (cfg: object) => ScormApi>;
+        if (w["Scorm12API"]) {
+          const api = new w["Scorm12API"]({});
+          if (savedCmi && typeof api.loadFromJSON === "function") {
+            try { api.loadFromJSON(savedCmi, ""); } catch { /* ok */ }
+          }
+          const origCommit = api["LMSCommit"]?.bind(api);
+          const origFinish = api["LMSFinish"]?.bind(api);
+          if (origCommit) api["LMSCommit"] = (...args) => { origCommit(...args); saveProgress(targetCourseId, api, "1.2"); return "true"; };
+          if (origFinish) api["LMSFinish"] = (...args) => { origFinish(...args); saveProgress(targetCourseId, api, "1.2"); return "true"; };
+          (window as unknown as Record<string, unknown>)["API"] = api;
+        }
+        if (w["Scorm2004API"]) {
+          const api = new w["Scorm2004API"]({});
+          if (savedCmi && typeof api.loadFromJSON === "function") {
+            try { api.loadFromJSON(savedCmi, ""); } catch { /* ok */ }
+          }
+          const origCommit = api["Commit"]?.bind(api);
+          const origTerminate = api["Terminate"]?.bind(api);
+          if (origCommit) api["Commit"] = (...args) => { origCommit(...args); saveProgress(targetCourseId, api, "2004"); return "true"; };
+          if (origTerminate) api["Terminate"] = (...args) => { origTerminate(...args); saveProgress(targetCourseId, api, "2004"); return "true"; };
+          (window as unknown as Record<string, unknown>)["API_1484_11"] = api;
+        }
+        setApiReady(true);
+      })
+      .catch(() => setApiReady(true));
+  }, [activeModuleIdx, course.id, modules]);
+
   const publishedDate = new Date(course.publishedAt).toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
@@ -164,14 +285,61 @@ export default function ScormPlayer({
           </Link>
           <span style={{ color: "#1e2433", fontSize: 12 }}>›</span>
           <span style={{ fontSize: 13, color: "#7a90bc", fontWeight: 500 }}>{course.title}</span>
+          {multiModule && activeContent?.title && (
+            <>
+              <span style={{ color: "#1e2433", fontSize: 12 }}>›</span>
+              <span style={{ fontSize: 13, color: "#5a7aff" }}>{activeContent.title}</span>
+            </>
+          )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {resumed && (
+            <span style={{ fontSize: 10, fontFamily: "'IBM Plex Mono', monospace", padding: "3px 8px", borderRadius: 3, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)", color: "#4ade80", letterSpacing: "0.5px" }}>
+              RESUMED
+            </span>
+          )}
           <span style={{ fontSize: 10, fontFamily: "'IBM Plex Mono', monospace", padding: "3px 8px", borderRadius: 3, background: "rgba(90,122,255,0.1)", border: "1px solid rgba(90,122,255,0.2)", color: "#8099ff", letterSpacing: "0.5px" }}>
             SCORM {course.version}
           </span>
           <span style={{ fontSize: 12, color: "#3a4a68" }}>Published {publishedDate}</span>
         </div>
       </header>
+
+      {/* Module tabs (only shown when course has multiple modules) */}
+      {multiModule && (
+        <div style={{ borderBottom: "1px solid #13161f", background: "#0c0e14", padding: "0 24px", display: "flex", gap: 0, overflowX: "auto", flexShrink: 0 }}>
+          {modules.map((mod, i) => {
+            const c = parseModuleContent(mod.content);
+            const isActive = i === activeModuleIdx;
+            return (
+              <button
+                key={mod.id}
+                onClick={() => switchModule(i)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  borderBottom: isActive ? "2px solid #5a7aff" : "2px solid transparent",
+                  color: isActive ? "#c5d0e8" : "#4a5568",
+                  padding: "10px 16px",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  fontFamily: "'IBM Plex Sans', sans-serif",
+                  whiteSpace: "nowrap",
+                  transition: "color 0.15s",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: isActive ? "#5a7aff" : "#3a4a68" }}>
+                  {String(mod.order).padStart(2, "0")}
+                </span>
+                {c.title ?? `Module ${mod.order}`}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Player area */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", position: "relative" }}>
@@ -183,15 +351,31 @@ export default function ScormPlayer({
           </div>
         )}
 
-        {apiReady && (
-          <iframe
-            src={scormUrl}
-            title={course.title}
-            onLoad={() => setLoaded(true)}
-            style={{ flex: 1, width: "100%", border: "none", minHeight: "calc(100vh - 52px)", opacity: loaded ? 1 : 0, transition: "opacity 0.3s ease" }}
-            allow="fullscreen"
-          />
-        )}
+        {apiReady && (() => {
+          const activeType = activeModule?.type ?? "scorm";
+          if (activeType !== "scorm") {
+            // Non-SCORM module — delegate to ContentPlayer (no SCORM API needed)
+            return (
+              <div key={activeModuleIdx} style={{ flex: 1, display: "flex", flexDirection: "column", opacity: 1 }}>
+                <ContentPlayer
+                  type={activeType}
+                  contentJson={activeModule?.content ?? "{}"}
+                  title={activeContent?.title ?? course.title}
+                />
+              </div>
+            );
+          }
+          return (
+            <iframe
+              key={activeModuleIdx}
+              src={activeScormUrl}
+              title={activeContent?.title ?? course.title}
+              onLoad={() => setLoaded(true)}
+              style={{ flex: 1, width: "100%", border: "none", minHeight: `calc(100vh - ${multiModule ? 88 : 52}px)`, opacity: loaded ? 1 : 0, transition: "opacity 0.3s ease" }}
+              allow="fullscreen"
+            />
+          );
+        })()}
       </div>
     </div>
   );

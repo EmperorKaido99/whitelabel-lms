@@ -13,6 +13,13 @@ interface CatalogCourse {
   prerequisites?: string[];
 }
 
+interface CourseModule {
+  id: string;
+  order: number;
+  type: string;
+  content: string; // JSON string: { packageId, entryPoint, version, title }
+}
+
 async function getCourse(id: string): Promise<CatalogCourse | null> {
   try {
     const { readFile } = await import("fs/promises");
@@ -78,6 +85,21 @@ export default async function CoursePlayerPage({
     } catch { /* auth optional */ }
   }
 
+  // Load modules from DB for this course (used for multi-module navigation)
+  let modules: CourseModule[] = [];
+  try {
+    const { prisma } = await import("@/adapters/db");
+    const { auth } = await import("@/lib/auth/config");
+    const session = await auth();
+    const tenantId = (session?.user as { tenantId?: string })?.tenantId;
+    if (tenantId) {
+      modules = await prisma.module.findMany({
+        where: { courseId, tenantId },
+        orderBy: { order: "asc" },
+      });
+    }
+  } catch { /* modules optional */ }
+
   const scormUrl = `/scorm/${course.packageId}/${course.entryPoint}`;
-  return <ScormPlayer course={course} scormUrl={scormUrl} />;
+  return <ScormPlayer course={course} scormUrl={scormUrl} modules={modules} />;
 }

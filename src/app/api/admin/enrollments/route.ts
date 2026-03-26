@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
     const { prisma, tenantId } = await getPrismaAndTenant();
     if (!tenantId) return NextResponse.json({ error: "No tenant found." }, { status: 400 });
 
-    const { userId, courseId } = await req.json();
+    const { userId, courseId, dueDate } = await req.json();
     if (!userId || !courseId) {
       return NextResponse.json({ error: "userId and courseId are required." }, { status: 400 });
     }
@@ -88,6 +88,7 @@ export async function POST(req: NextRequest) {
         courseId,
         tenantId,
         status: "enrolled",
+        dueDate: dueDate ? new Date(dueDate) : null,
       },
       include: { user: true, course: true },
     });

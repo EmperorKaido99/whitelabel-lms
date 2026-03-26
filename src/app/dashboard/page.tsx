@@ -43,6 +43,7 @@ async function getLearnerData(userId: string, tenantId: string) {
       courseId: e.courseId,
       status: e.status,
       createdAt: e.createdAt.toISOString(),
+      dueDate: e.dueDate?.toISOString() ?? null,
       courseTitle: catalog[e.courseId]?.title ?? e.course?.title ?? e.courseId,
       courseDescription: catalog[e.courseId]?.description,
       categories: catalog[e.courseId]?.categories ?? [],

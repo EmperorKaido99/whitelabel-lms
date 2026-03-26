@@ -15,11 +15,20 @@ function ResetForm() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  // Real-time complexity checks
+  const checks = [
+    { label: "At least 8 characters", pass: password.length >= 8 },
+    { label: "One uppercase letter", pass: /[A-Z]/.test(password) },
+    { label: "One lowercase letter", pass: /[a-z]/.test(password) },
+    { label: "One number", pass: /[0-9]/.test(password) },
+  ];
+  const passwordValid = checks.every(c => c.pass);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!passwordValid) { setError("Password does not meet the requirements below."); return; }
     if (password !== confirm) { setError("Passwords do not match."); return; }
-    if (password.length < 8) { setError("Password must be at least 8 characters."); return; }
     setLoading(true);
     try {
       const res = await fetch("/api/auth/reset-password", {
@@ -85,8 +94,18 @@ function ResetForm() {
                   onChange={e => setPassword(e.target.value)}
                   placeholder="Min. 8 characters"
                   required
-                  style={{ width: "100%", background: "#111520", border: "1px solid #2a3347", borderRadius: 6, padding: "10px 14px", fontSize: 14, color: "#e2e8f0", fontFamily: "'IBM Plex Sans', sans-serif" }}
+                  style={{ width: "100%", background: "#111520", border: `1px solid ${password && passwordValid ? "rgba(74,222,128,0.4)" : "#2a3347"}`, borderRadius: 6, padding: "10px 14px", fontSize: 14, color: "#e2e8f0", fontFamily: "'IBM Plex Sans', sans-serif" }}
                 />
+                {password && (
+                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 5 }}>
+                    {checks.map(c => (
+                      <div key={c.label} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 12 }}>
+                        <span style={{ color: c.pass ? "#4ade80" : "#4a5568", fontSize: 11, lineHeight: 1 }}>{c.pass ? "✓" : "○"}</span>
+                        <span style={{ color: c.pass ? "#4ade80" : "#4a5568" }}>{c.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <label style={{ display: "block", fontSize: 12, fontWeight: 500, color: "#7a90bc", marginBottom: 8 }}>Confirm Password</label>
