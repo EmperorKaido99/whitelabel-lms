@@ -126,6 +126,7 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <Link href="/catalog" style={ghostBtn}>View Catalog</Link>
+          <Link href="/admin/courses/create" style={{ ...primaryBtn, background: "#6b5aff" }}>✨ AI Creator</Link>
           <Link href="/admin/scorm/upload" style={primaryBtn}>+ Upload Course</Link>
           <button onClick={() => signOut({ callbackUrl: "/auth" })} style={{ ...ghostBtn, border: "none", cursor: "pointer", fontFamily: "'IBM Plex Sans', sans-serif" }}>
             Sign Out
@@ -246,9 +247,9 @@ export default function AdminDashboard({ courses, totalFiles, totalSizeBytes, te
 
         {/* Quick actions */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginTop: 24 }}>
+          <QuickAction href="/admin/courses/create" icon="✨" title="AI Course Creator" desc="Generate a SCORM course from a description" accent="#a78bfa" />
           <QuickAction href="/admin/scorm/upload" icon="⬆" title="Upload SCORM Package" desc="Add a new course to the platform" accent="#5a7aff" />
           <QuickAction href="/admin/learners" icon="👥" title="Manage Learners" desc="Enroll & track learner progress" accent="#22d3ee" />
-          <QuickAction href="/admin/analytics" icon="📈" title="Analytics" desc="Completion rates & engagement stats" accent="#4ade80" />
         </div>
       </main>
 
