@@ -83,26 +83,24 @@ export async function POST(req: NextRequest) {
     );
     const extractedText = extractions.filter(Boolean).join("\n");
 
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: "ANTHROPIC_API_KEY is not configured. Add it to your .env.local file." },
+        { error: "GEMINI_API_KEY is not configured. Add it to your .env.local file (get a free key at aistudio.google.com)." },
         { status: 500 }
       );
     }
 
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const client = new Anthropic({ apiKey });
-
-    const msg = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 8192,
-      system:
-        "You are an expert instructional designer creating professional e-learning courses. Generate engaging, educational content that is clear, practical, and well-structured. Always return valid JSON only — no markdown, no explanation.",
-      messages: [{ role: "user", content: buildPrompt(description, references, extractedText) }],
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.0-flash",
+      systemInstruction:
+        "You are an expert instructional designer creating professional e-learning courses. Generate engaging, educational content that is clear, practical, and well-structured. Always return valid JSON only — no markdown fences, no explanation, just the JSON object.",
     });
 
-    const raw = msg.content[0].type === "text" ? msg.content[0].text : "";
+    const result = await model.generateContent(buildPrompt(description, references, extractedText));
+    const raw = result.response.text();
 
     let courseData: unknown;
     try {
