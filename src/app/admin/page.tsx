@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { readFile } from "fs/promises";
 import { statSync, existsSync } from "fs";
 import { readdirSync } from "fs";
