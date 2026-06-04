@@ -58,16 +58,30 @@ export default function DashboardClient({
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        .dash-nav { padding: 0 40px; }
+        .dash-main { padding: 40px; }
+        .dash-stats { grid-template-columns: repeat(4, 1fr); }
+        .nav-right { display: flex; gap: 8px; align-items: center; }
+        .nav-link-hide { display: inline-flex; }
+        @media (max-width: 768px) {
+          .dash-nav { padding: 0 16px; }
+          .dash-main { padding: 24px 16px; }
+          .dash-stats { grid-template-columns: repeat(2, 1fr); }
+          .nav-link-hide { display: none; }
+        }
+        @media (max-width: 480px) {
+          .dash-stats { grid-template-columns: repeat(2, 1fr); }
+        }
       `}</style>
 
       {/* Nav */}
-      <nav style={{ borderBottom: "1px solid #13161f", padding: "0 40px", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0c0e14", position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+      <nav className="dash-nav" style={{ borderBottom: "1px solid #13161f", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0c0e14", position: "sticky", top: 0, zIndex: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <Link href="/" style={{ color: "#f0f4ff", fontWeight: 600, fontSize: 15, textDecoration: "none" }}>◆ LMS</Link>
           <span style={{ color: "#5a7aff", fontSize: 13, fontWeight: 500 }}>My Learning</span>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Link href="/catalog" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5 }}>Browse Catalog</Link>
+        <div className="nav-right">
+          <Link href="/catalog" className="nav-link-hide" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5 }}>Browse Catalog</Link>
           <Link href="/profile" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5 }}>Profile</Link>
           <button onClick={() => signOut({ callbackUrl: "/auth" })} style={{ background: "transparent", color: "#7a90bc", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5, fontSize: 13, cursor: "pointer", fontFamily: "'IBM Plex Sans', sans-serif" }}>
             Sign Out
@@ -75,14 +89,14 @@ export default function DashboardClient({
         </div>
       </nav>
 
-      <main style={{ padding: "40px", maxWidth: 1100, margin: "0 auto" }}>
+      <main className="dash-main" style={{ maxWidth: 1100, margin: "0 auto" }}>
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 11, letterSpacing: "1.5px", textTransform: "uppercase", color: "#5a7aff", fontFamily: "'IBM Plex Mono', monospace", marginBottom: 10 }}>Learner Dashboard</div>
-          <h1 style={{ fontSize: 28, fontWeight: 600, color: "#f0f4ff", letterSpacing: "-0.5px" }}>Welcome back, {learnerName.split(" ")[0]}</h1>
+          <h1 style={{ fontSize: "clamp(20px, 4vw, 28px)", fontWeight: 600, color: "#f0f4ff", letterSpacing: "-0.5px" }}>Welcome back, {learnerName.split(" ")[0]}</h1>
         </div>
 
         {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 36 }}>
+        <div className="dash-stats" style={{ display: "grid", gap: 16, marginBottom: 36 }}>
           {[
             { label: "Enrolled", value: enrollments.length, icon: "📚", accent: "#5a7aff" },
             { label: "In Progress", value: inProgress.length, icon: "▶", accent: "#22d3ee" },
@@ -139,7 +153,7 @@ function Section({ title, count, children }: { title: string; count: number; chi
         <h2 style={{ fontSize: 16, fontWeight: 600, color: "#e2e8f0" }}>{title}</h2>
         <span style={{ fontSize: 12, color: "#4a5568", background: "#1e2433", padding: "2px 8px", borderRadius: 4 }}>{count}</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
         {children}
       </div>
     </div>
@@ -149,14 +163,13 @@ function Section({ title, count, children }: { title: string; count: number; chi
 function StarRating({ courseId }: { courseId: string }) {
   const [hover, setHover] = useState(0);
   const [selected, setSelected] = useState(0);
-  const [savedRating, setSavedRating] = useState(0);  // what's already in DB
+  const [savedRating, setSavedRating] = useState(0);
   const [comment, setComment] = useState("");
   const [showComment, setShowComment] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Load existing rating on mount
   useEffect(() => {
     fetch(`/api/ratings?courseId=${encodeURIComponent(courseId)}`)
       .then(r => r.json())
@@ -226,12 +239,12 @@ function StarRating({ courseId }: { courseId: string }) {
         )}
       </div>
       {showComment && (
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           <input
             value={comment}
             onChange={e => setComment(e.target.value)}
             placeholder="Leave a comment (optional)…"
-            style={{ flex: 1, background: "#111520", border: "1px solid #2a3347", borderRadius: 4, padding: "6px 10px", fontSize: 12, color: "#e2e8f0", fontFamily: "'IBM Plex Sans', sans-serif" }}
+            style={{ flex: 1, minWidth: 0, background: "#111520", border: "1px solid #2a3347", borderRadius: 4, padding: "6px 10px", fontSize: 12, color: "#e2e8f0", fontFamily: "'IBM Plex Sans', sans-serif" }}
           />
           <button
             onClick={submit}
@@ -307,7 +320,7 @@ function CourseCard({ enrollment: e, index, completed, isLocked }: { enrollment:
           </div>
         )}
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{
             fontSize: 10, padding: "3px 8px", borderRadius: 3, fontFamily: "'IBM Plex Mono', monospace",
             background: isLocked ? "rgba(74,85,104,0.15)" : completed ? "rgba(74,222,128,0.1)" : "rgba(90,122,255,0.1)",

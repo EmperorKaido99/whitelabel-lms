@@ -116,12 +116,20 @@ export default function ProfilePage() {
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         input:focus { outline: none; border-color: #5a7aff !important; box-shadow: 0 0 0 3px rgba(90,122,255,0.15); }
+        .profile-nav { padding: 0 40px; }
+        .profile-main { padding: 40px; }
+        .profile-nav-breadcrumb { display: inline; }
+        @media (max-width: 640px) {
+          .profile-nav { padding: 0 16px; }
+          .profile-main { padding: 24px 16px; }
+          .profile-nav-breadcrumb { display: none; }
+        }
       `}</style>
 
-      <nav style={{ borderBottom: "1px solid #13161f", padding: "0 40px", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0c0e14", position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+      <nav className="profile-nav" style={{ borderBottom: "1px solid #13161f", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0c0e14", position: "sticky", top: 0, zIndex: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <Link href="/" style={{ color: "#f0f4ff", fontWeight: 600, fontSize: 15, textDecoration: "none" }}>◆ LMS</Link>
-          <Link href="/dashboard" style={{ color: "#4a5568", fontSize: 13, textDecoration: "none" }}>My Learning</Link>
+          <Link href="/dashboard" className="profile-nav-breadcrumb" style={{ color: "#4a5568", fontSize: 13, textDecoration: "none" }}>My Learning</Link>
           <span style={{ color: "#5a7aff", fontSize: 13, fontWeight: 500 }}>Profile</span>
         </div>
         <button onClick={() => signOut({ callbackUrl: "/auth" })} style={{ background: "transparent", color: "#7a90bc", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5, fontSize: 13, cursor: "pointer", fontFamily: "'IBM Plex Sans', sans-serif" }}>
@@ -129,7 +137,7 @@ export default function ProfilePage() {
         </button>
       </nav>
 
-      <main style={{ padding: "40px", maxWidth: 620, margin: "0 auto" }}>
+      <main className="profile-main" style={{ maxWidth: 620, margin: "0 auto" }}>
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 11, letterSpacing: "1.5px", textTransform: "uppercase", color: "#5a7aff", fontFamily: "'IBM Plex Mono', monospace", marginBottom: 8 }}>Account</div>
           <h1 style={{ fontSize: 26, fontWeight: 600, color: "#f0f4ff", letterSpacing: "-0.5px" }}>Your Profile</h1>

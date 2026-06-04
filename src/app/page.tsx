@@ -10,10 +10,27 @@ export default function Home() {
       display: "flex",
       flexDirection: "column",
     }}>
+      <style>{`
+        * { box-sizing: border-box; }
+        .home-nav { padding: 0 40px; }
+        .home-hero { padding: 80px 40px; }
+        .home-cards { grid-template-columns: repeat(3, 1fr); }
+        .hero-btns { flex-direction: row; }
+        .nav-links { display: flex; gap: 8px; }
+        .nav-link-hide { display: inline; }
+        @media (max-width: 640px) {
+          .home-nav { padding: 0 16px; }
+          .home-hero { padding: 40px 16px; }
+          .home-cards { grid-template-columns: 1fr; }
+          .hero-btns { flex-direction: column; align-items: stretch; text-align: center; }
+          .nav-link-hide { display: none; }
+          .nav-links { gap: 6px; }
+        }
+      `}</style>
+
       {/* Nav */}
-      <nav style={{
+      <nav className="home-nav" style={{
         borderBottom: "1px solid #1e2433",
-        padding: "0 40px",
         height: 56,
         display: "flex",
         alignItems: "center",
@@ -23,21 +40,20 @@ export default function Home() {
         <span style={{ color: "#f0f4ff", fontWeight: 600, fontSize: 16, letterSpacing: "-0.3px" }}>
           ◆ WhiteLabel LMS
         </span>
-        <div style={{ display: "flex", gap: 8 }}>
-          <a href="/admin" style={navBtn}>Admin</a>
-          <a href="/catalog" style={navBtn}>Catalog</a>
+        <div className="nav-links">
+          <a href="/admin" className="nav-link-hide" style={navBtn}>Admin</a>
+          <a href="/catalog" className="nav-link-hide" style={navBtn}>Catalog</a>
           <a href="/auth" style={{ ...navBtn, background: "#5a7aff", color: "#fff", border: "none" }}>Sign in</a>
         </div>
       </nav>
 
       {/* Hero */}
-      <div style={{
+      <div className="home-hero" style={{
         flex: 1,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        padding: "80px 40px",
         textAlign: "center",
         gap: 24,
       }}>
@@ -55,7 +71,7 @@ export default function Home() {
         </div>
 
         <h1 style={{
-          fontSize: "clamp(36px, 6vw, 64px)",
+          fontSize: "clamp(28px, 6vw, 64px)",
           fontWeight: 600,
           color: "#f0f4ff",
           letterSpacing: "-1.5px",
@@ -66,11 +82,11 @@ export default function Home() {
           <span style={{ color: "#5a7aff" }}>built to white-label</span>
         </h1>
 
-        <p style={{ fontSize: 17, color: "#4a5568", maxWidth: 480, lineHeight: 1.7 }}>
+        <p style={{ fontSize: "clamp(14px, 3vw, 17px)", color: "#4a5568", maxWidth: 480, lineHeight: 1.7 }}>
           Deploy a fully branded LMS for any client. Upload SCORM packages, manage learners, and track completions — all under your domain.
         </p>
 
-        <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+        <div className="hero-btns" style={{ display: "flex", gap: 12, marginTop: 8 }}>
           <a href="/admin/scorm/upload" style={{
             background: "#5a7aff",
             color: "#fff",
@@ -110,9 +126,8 @@ export default function Home() {
       </div>
 
       {/* Cards */}
-      <div style={{
+      <div className="home-cards" style={{
         display: "grid",
-        gridTemplateColumns: "repeat(3, 1fr)",
         gap: 1,
         borderTop: "1px solid #1e2433",
         background: "#1e2433",

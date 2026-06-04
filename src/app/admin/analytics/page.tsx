@@ -90,24 +90,44 @@ export default async function AnalyticsPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0b0f", fontFamily: "'IBM Plex Sans', sans-serif", color: "#e2e8f0" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap'); * { box-sizing: border-box; margin: 0; padding: 0; }`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap'); * { box-sizing: border-box; margin: 0; padding: 0; }
+        .analytics-nav { padding: 0 40px; }
+        .analytics-main { padding: 40px; }
+        .analytics-stats { grid-template-columns: repeat(3, 1fr); }
+        .analytics-header { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+        .analytics-export { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .analytics-table-scroll { overflow: visible; }
+        .analytics-nav-right { display: flex; gap: 8px; }
+        .analytics-nav-hide { display: inline-flex; }
+        @media (max-width: 900px) {
+          .analytics-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          .analytics-table-inner { min-width: 700px; }
+        }
+        @media (max-width: 640px) {
+          .analytics-nav { padding: 0 16px; }
+          .analytics-main { padding: 24px 16px; }
+          .analytics-stats { grid-template-columns: repeat(2, 1fr) !important; }
+          .analytics-nav-hide { display: none; }
+          .analytics-header { flex-direction: column; align-items: flex-start; }
+        }
+      `}</style>
 
       {/* Nav */}
-      <nav style={{ borderBottom: "1px solid #13161f", padding: "0 40px", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0c0e14", position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+      <nav className="analytics-nav" style={{ borderBottom: "1px solid #13161f", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0c0e14", position: "sticky", top: 0, zIndex: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <Link href="/" style={{ color: "#f0f4ff", fontWeight: 600, fontSize: 15, textDecoration: "none" }}>◆ LMS</Link>
           <Link href="/admin" style={{ color: "#4a5568", fontSize: 13, textDecoration: "none" }}>Admin</Link>
           <span style={{ color: "#5a7aff", fontSize: 13, fontWeight: 500 }}>Analytics</span>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <Link href="/admin/ratings" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5 }}>Ratings</Link>
-          <Link href="/admin/groups" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5 }}>Groups</Link>
-          <Link href="/admin/learners" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5 }}>Manage Learners</Link>
+        <div className="analytics-nav-right">
+          <Link href="/admin/ratings" className="analytics-nav-hide" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5 }}>Ratings</Link>
+          <Link href="/admin/groups" className="analytics-nav-hide" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5 }}>Groups</Link>
+          <Link href="/admin/learners" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none", border: "1px solid #2a3347", padding: "6px 14px", borderRadius: 5 }}>Learners</Link>
         </div>
       </nav>
 
-      <main style={{ padding: "40px", maxWidth: 1100, margin: "0 auto" }}>
-        <div style={{ marginBottom: 32, display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
+      <main className="analytics-main" style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div className="analytics-header" style={{ marginBottom: 32 }}>
           <div>
             <div style={{ fontSize: 11, letterSpacing: "1.5px", textTransform: "uppercase", color: "#5a7aff", fontFamily: "'IBM Plex Mono', monospace", marginBottom: 8 }}>Reports</div>
             <h1 style={{ fontSize: 28, fontWeight: 600, color: "#f0f4ff", letterSpacing: "-0.5px" }}>Analytics</h1>
@@ -150,7 +170,7 @@ export default async function AnalyticsPage() {
         </div>
 
         {/* Totals */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 32 }}>
+        <div className="analytics-stats" style={{ display: "grid", gap: 16, marginBottom: 32 }}>
           {[
             { label: "Active Learners", value: totals.learners, icon: "👥", accent: "#5a7aff" },
             { label: "Total Enrollments", value: totals.enrollments, icon: "📋", accent: "#22d3ee" },
@@ -173,6 +193,8 @@ export default async function AnalyticsPage() {
             <h2 style={{ fontSize: 15, fontWeight: 600, color: "#e2e8f0" }}>Course Breakdown</h2>
           </div>
 
+          <div className="analytics-table-scroll">
+            <div className="analytics-table-inner">
           {/* Header */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 110px 110px 120px 110px 90px 100px", padding: "10px 24px", borderBottom: "1px solid #13161f", background: "#080a0f" }}>
             {["Course", "Enrollments", "Completions", "Completion %", "Avg Score", "Rating", "Avg Time"].map(h => (
@@ -225,6 +247,8 @@ export default async function AnalyticsPage() {
               </div>
             );
           })}
+            </div>
+          </div>
         </div>
       </main>
     </div>

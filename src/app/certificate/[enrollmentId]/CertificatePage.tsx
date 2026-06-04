@@ -66,7 +66,7 @@ export default function CertificatePage({ enrollmentId, learnerName, courseTitle
       `}</style>
 
       {/* Navigation bar — hidden on print */}
-      <nav className="no-print" style={{ borderBottom: "1px solid #13161f", padding: "0 40px", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0c0e14", flexShrink: 0 }}>
+      <nav className="no-print" style={{ borderBottom: "1px solid #13161f", padding: "0 clamp(16px, 4vw, 40px)", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0c0e14", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
           <Link href="/" style={{ color: "#f0f4ff", fontWeight: 600, fontSize: 15, textDecoration: "none" }}>◆ LMS</Link>
           <Link href="/dashboard" style={{ color: "#4a5568", fontSize: 13, textDecoration: "none" }}>← My Dashboard</Link>
@@ -100,7 +100,7 @@ export default function CertificatePage({ enrollmentId, learnerName, courseTitle
             borderRadius: 12,
             width: "100%",
             maxWidth: 820,
-            padding: "56px 72px",
+            padding: "clamp(28px, 5vw, 56px) clamp(20px, 7vw, 72px)",
             textAlign: "center",
             position: "relative",
             boxShadow: "0 32px 100px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04)",
@@ -134,7 +134,7 @@ export default function CertificatePage({ enrollmentId, learnerName, courseTitle
             This certifies that
           </p>
 
-          <h1 className="cert-name" style={{ fontSize: 42, fontWeight: 600, color: "#f0f4ff", letterSpacing: "-1px", marginBottom: 20, fontFamily: "'Playfair Display', serif", lineHeight: 1.2 }}>
+          <h1 className="cert-name" style={{ fontSize: "clamp(24px, 5vw, 42px)", fontWeight: 600, color: "#f0f4ff", letterSpacing: "-1px", marginBottom: 20, fontFamily: "'Playfair Display', serif", lineHeight: 1.2 }}>
             {learnerName}
           </h1>
 
@@ -142,7 +142,7 @@ export default function CertificatePage({ enrollmentId, learnerName, courseTitle
             has successfully completed
           </p>
 
-          <h2 className="cert-course" style={{ fontSize: 24, fontWeight: 600, color: "#c5d0e8", letterSpacing: "-0.3px", marginBottom: 16, lineHeight: 1.4, fontFamily: "'IBM Plex Sans', sans-serif", maxWidth: 500, margin: "0 auto 20px" }}>
+          <h2 className="cert-course" style={{ fontSize: "clamp(16px, 3.5vw, 24px)", fontWeight: 600, color: "#c5d0e8", letterSpacing: "-0.3px", marginBottom: 16, lineHeight: 1.4, fontFamily: "'IBM Plex Sans', sans-serif", maxWidth: 500, margin: "0 auto 20px" }}>
             {courseTitle}
           </h2>
 

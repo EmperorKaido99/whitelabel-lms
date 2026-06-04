@@ -724,6 +724,18 @@ export default function ScormUploadPage() {
           line-height: 1.5;
         }
         .req-divider { border: none; border-top: 1px solid #1e2433; margin: 20px 0; }
+
+        @media (max-width: 768px) {
+          .upload-main {
+            grid-template-columns: 1fr;
+            padding: 24px 16px;
+          }
+          .page-header { padding: 20px 16px 18px; }
+          .requirements-panel { position: static; }
+          .drop-zone { padding: 48px 24px; }
+          .result-actions { flex-direction: column; }
+          .btn-primary, .btn-ghost { width: 100%; text-align: center; }
+        }
       `}</style>
     </div>
   );

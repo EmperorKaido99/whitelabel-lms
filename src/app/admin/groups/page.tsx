@@ -125,15 +125,24 @@ export default function GroupsPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0b0f", fontFamily: "'IBM Plex Sans', sans-serif", color: "#e2e8f0" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap'); * { box-sizing:border-box; margin:0; padding:0; } select { background:#111520; border:1px solid #2a3347; border-radius:5px; padding:8px 12px; font-size:13px; color:#e2e8f0; font-family:'IBM Plex Sans',sans-serif; }`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap'); * { box-sizing:border-box; margin:0; padding:0; } select { background:#111520; border:1px solid #2a3347; border-radius:5px; padding:8px 12px; font-size:13px; color:#e2e8f0; font-family:'IBM Plex Sans',sans-serif; }
+        .groups-nav { padding: 0 40px; }
+        .groups-main { padding: 40px; }
+        .group-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        @media (max-width: 640px) {
+          .groups-nav { padding: 0 16px; }
+          .groups-main { padding: 24px 16px; }
+          .group-detail-grid { grid-template-columns: 1fr; }
+        }
+      `}</style>
 
-      <nav style={{ borderBottom: "1px solid #13161f", padding: "0 40px", height: 54, display: "flex", alignItems: "center", gap: 24, background: "#0c0e14" }}>
+      <nav className="groups-nav" style={{ borderBottom: "1px solid #13161f", height: 54, display: "flex", alignItems: "center", gap: 16, background: "#0c0e14" }}>
         <Link href="/" style={{ color: "#f0f4ff", fontWeight: 600, fontSize: 15, textDecoration: "none" }}>◆ LMS</Link>
         <Link href="/admin" style={{ color: "#4a5568", fontSize: 13, textDecoration: "none" }}>Admin</Link>
         <span style={{ color: "#5a7aff", fontSize: 13, fontWeight: 500 }}>Groups</span>
       </nav>
 
-      <main style={{ padding: "40px", maxWidth: 900, margin: "0 auto" }}>
+      <main className="groups-main" style={{ maxWidth: 900, margin: "0 auto" }}>
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 11, letterSpacing: "1.5px", textTransform: "uppercase", color: "#5a7aff", fontFamily: "'IBM Plex Mono', monospace", marginBottom: 8 }}>Cohorts</div>
           <h1 style={{ fontSize: 26, fontWeight: 600, color: "#f0f4ff", letterSpacing: "-0.5px" }}>Group Management</h1>
@@ -184,7 +193,7 @@ export default function GroupsPage() {
               </div>
 
               {isOpen && (
-                <div style={{ borderTop: "1px solid #13161f", padding: "20px 22px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+                <div className="group-detail-grid" style={{ borderTop: "1px solid #13161f", padding: "20px 22px" }}>
                   {/* Members */}
                   <div>
                     <h3 style={{ fontSize: 12, fontWeight: 600, color: "#7a90bc", marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.8px", fontFamily: "'IBM Plex Mono', monospace" }}>Members</h3>

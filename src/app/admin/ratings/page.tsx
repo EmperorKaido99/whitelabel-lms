@@ -87,17 +87,26 @@ export default async function AdminRatingsPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0b0f", fontFamily: "'IBM Plex Sans', sans-serif", color: "#e2e8f0" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap'); * { box-sizing: border-box; margin: 0; padding: 0; }`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap'); * { box-sizing: border-box; margin: 0; padding: 0; }
+        .ratings-nav { padding: 0 40px; }
+        .ratings-main { padding: 40px; }
+        .ratings-course-header { display: flex; align-items: center; gap: 16px; }
+        @media (max-width: 640px) {
+          .ratings-nav { padding: 0 16px; }
+          .ratings-main { padding: 24px 16px; }
+          .ratings-course-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+        }
+      `}</style>
 
-      <nav style={{ borderBottom: "1px solid #13161f", padding: "0 40px", height: 54, display: "flex", alignItems: "center", gap: 24, background: "#0c0e14" }}>
+      <nav className="ratings-nav" style={{ borderBottom: "1px solid #13161f", height: 54, display: "flex", alignItems: "center", gap: 16, background: "#0c0e14" }}>
         <Link href="/" style={{ color: "#f0f4ff", fontWeight: 600, fontSize: 15, textDecoration: "none" }}>◆ LMS</Link>
         <Link href="/admin" style={{ color: "#4a5568", fontSize: 13, textDecoration: "none" }}>Admin</Link>
         <Link href="/admin/analytics" style={{ color: "#4a5568", fontSize: 13, textDecoration: "none" }}>Analytics</Link>
         <span style={{ color: "#1e2433", fontSize: 12 }}>›</span>
-        <span style={{ color: "#5a7aff", fontSize: 13, fontWeight: 500 }}>Course Ratings</span>
+        <span style={{ color: "#5a7aff", fontSize: 13, fontWeight: 500 }}>Ratings</span>
       </nav>
 
-      <main style={{ padding: "40px", maxWidth: 900, margin: "0 auto" }}>
+      <main className="ratings-main" style={{ maxWidth: 900, margin: "0 auto" }}>
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 11, letterSpacing: "1.5px", textTransform: "uppercase", color: "#5a7aff", fontFamily: "'IBM Plex Mono', monospace", marginBottom: 8 }}>
             Feedback
@@ -117,7 +126,7 @@ export default async function AdminRatingsPage() {
             {summaries.map(summary => (
               <div key={summary.courseId} style={{ background: "#0c0e14", border: "1px solid #1e2433", borderRadius: 10, overflow: "hidden" }}>
                 {/* Course header */}
-                <div style={{ padding: "16px 22px", borderBottom: "1px solid #13161f", display: "flex", alignItems: "center", gap: 16, background: "#080a0f" }}>
+                <div className="ratings-course-header" style={{ padding: "16px 22px", borderBottom: "1px solid #13161f", background: "#080a0f" }}>
                   <div style={{ flex: 1 }}>
                     <Link href={`/catalog/${summary.courseId}`} style={{ fontSize: 15, fontWeight: 600, color: "#c5d0e8", textDecoration: "none" }}>
                       {summary.title}

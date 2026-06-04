@@ -62,10 +62,20 @@ export default function TenantsPage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0b0f", fontFamily: "'IBM Plex Sans', sans-serif", color: "#e2e8f0" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap'); * { box-sizing: border-box; margin: 0; padding: 0; }`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap'); * { box-sizing: border-box; margin: 0; padding: 0; }
+        .tenants-nav { padding: 0 40px; }
+        .tenants-main { padding: 40px; }
+        .tenants-table-scroll { overflow: visible; }
+        @media (max-width: 768px) {
+          .tenants-nav { padding: 0 16px; }
+          .tenants-main { padding: 24px 16px; }
+          .tenants-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+          .tenants-table-inner { min-width: 600px; }
+        }
+      `}</style>
 
-      <nav style={{ borderBottom: "1px solid #13161f", padding: "0 40px", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0c0e14", position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+      <nav className="tenants-nav" style={{ borderBottom: "1px solid #13161f", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0c0e14", position: "sticky", top: 0, zIndex: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <Link href="/" style={{ color: "#f0f4ff", fontWeight: 600, fontSize: 15, textDecoration: "none" }}>◆ LMS</Link>
           <Link href="/admin" style={{ color: "#7a90bc", fontSize: 13, textDecoration: "none" }}>Dashboard</Link>
           <span style={{ color: "#5a7aff", fontSize: 13, fontWeight: 500 }}>Tenants</span>
@@ -75,7 +85,7 @@ export default function TenantsPage() {
         </button>
       </nav>
 
-      <main style={{ padding: "40px", maxWidth: 1000, margin: "0 auto" }}>
+      <main className="tenants-main" style={{ maxWidth: 1000, margin: "0 auto" }}>
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 11, letterSpacing: "1.5px", textTransform: "uppercase", color: "#5a7aff", fontFamily: "'IBM Plex Mono', monospace", marginBottom: 10 }}>Admin</div>
           <h1 style={{ fontSize: 28, fontWeight: 600, color: "#f0f4ff", letterSpacing: "-0.5px" }}>Tenant Management</h1>
@@ -90,6 +100,8 @@ export default function TenantsPage() {
           </div>
         ) : (
           <div style={{ background: "#0c0e14", border: "1px solid #1e2433", borderRadius: 10, overflow: "hidden" }}>
+            <div className="tenants-table-scroll">
+            <div className="tenants-table-inner">
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid #1e2433" }}>
@@ -124,6 +136,8 @@ export default function TenantsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
+            </div>
           </div>
         )}
       </main>

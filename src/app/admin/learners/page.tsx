@@ -180,11 +180,29 @@ export default function LearnersPage() {
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
         input:focus, select:focus, textarea:focus { outline: none; border-color: #5a7aff !important; }
+        .learners-nav { padding: 0 40px; }
+        .learners-main { padding: 40px; }
+        .learners-stats { display: flex; gap: 16px; }
+        .learner-row { display: flex; align-items: center; padding: 14px 24px; gap: 16px; cursor: pointer; }
+        .learner-row-actions { display: flex; align-items: center; gap: 6px; }
+        .learner-join { display: block; }
+        .learner-search-bar { display: flex; justify-content: space-between; align-items: center; }
+        @media (max-width: 768px) {
+          .learners-nav { padding: 0 16px; }
+          .learners-main { padding: 24px 16px; }
+          .learners-stats { flex-wrap: wrap; }
+          .learners-stats > div { flex: 1 1 calc(50% - 8px); min-width: 0; }
+          .learner-join { display: none; }
+        }
+        @media (max-width: 640px) {
+          .learner-search-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
+          .learner-search-bar input { width: 100% !important; }
+        }
       `}</style>
 
       {/* Nav */}
-      <nav style={{ borderBottom: "1px solid #13161f", padding: "0 40px", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0c0e14", position: "sticky", top: 0, zIndex: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+      <nav className="learners-nav" style={{ borderBottom: "1px solid #13161f", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0c0e14", position: "sticky", top: 0, zIndex: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <Link href="/" style={{ color: "#f0f4ff", fontWeight: 600, fontSize: 15, textDecoration: "none" }}>◆ LMS</Link>
           <Link href="/admin" style={{ color: "#4a5568", fontSize: 13, textDecoration: "none" }}>Admin</Link>
           <span style={{ color: "#5a7aff", fontSize: 13, fontWeight: 500 }}>Learners</span>
@@ -194,7 +212,7 @@ export default function LearnersPage() {
             onClick={() => { setShowBulkModal(true); setError(""); setSuccessMsg(""); setBulkCourseId(""); setBulkSelected(new Set()); setBulkCsv(""); }}
             style={{ background: "transparent", color: "#22d3ee", border: "1px solid rgba(34,211,238,0.25)", padding: "7px 16px", borderRadius: 5, fontSize: 13, cursor: "pointer", fontWeight: 500, fontFamily: "'IBM Plex Sans', sans-serif" }}
           >
-            ⚡ Bulk Enroll
+            ⚡ Bulk
           </button>
           <button
             onClick={() => { setShowAddModal(true); setError(""); }}
@@ -205,14 +223,14 @@ export default function LearnersPage() {
         </div>
       </nav>
 
-      <main style={{ padding: "40px", maxWidth: 1100, margin: "0 auto" }}>
+      <main className="learners-main" style={{ maxWidth: 1100, margin: "0 auto" }}>
         <div style={{ marginBottom: 28 }}>
           <div style={{ fontSize: 11, letterSpacing: "1.5px", textTransform: "uppercase", color: "#5a7aff", fontFamily: "'IBM Plex Mono', monospace", marginBottom: 8 }}>Learner Management</div>
           <h1 style={{ fontSize: 28, fontWeight: 600, color: "#f0f4ff", letterSpacing: "-0.5px" }}>Learners</h1>
         </div>
 
         {/* Stats */}
-        <div style={{ display: "flex", gap: 16, marginBottom: 28 }}>
+        <div className="learners-stats" style={{ marginBottom: 28 }}>
           {[
             { label: "Total Learners", value: learners.length, color: "#5a7aff" },
             { label: "Total Enrollments", value: learners.reduce((s, l) => s + l.enrollments.length, 0), color: "#22d3ee" },
@@ -227,7 +245,7 @@ export default function LearnersPage() {
 
         {/* Table */}
         <div style={{ background: "#0c0e14", border: "1px solid #1e2433", borderRadius: 10, overflow: "hidden" }}>
-          <div style={{ padding: "16px 24px", borderBottom: "1px solid #1e2433", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div className="learner-search-bar" style={{ padding: "16px 24px", borderBottom: "1px solid #1e2433" }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>{filtered.length} learner{filtered.length !== 1 ? "s" : ""}</span>
             <input
               value={search}
@@ -246,17 +264,17 @@ export default function LearnersPage() {
           ) : filtered.map((learner, i) => (
             <div key={learner.id} style={{ borderBottom: i < filtered.length - 1 ? "1px solid #13161f" : "none" }}>
               <div
-                style={{ display: "flex", alignItems: "center", padding: "14px 24px", gap: 16, cursor: "pointer" }}
+                className="learner-row"
                 onClick={() => setExpandedLearner(expandedLearner === learner.id ? null : learner.id)}
                 onMouseEnter={e => (e.currentTarget.style.background = "#111520")}
                 onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
               >
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: "#c5d0e8" }}>{learner.name || learner.email}</div>
-                  {learner.name && <div style={{ fontSize: 12, color: "#4a5568" }}>{learner.email}</div>}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 500, color: "#c5d0e8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{learner.name || learner.email}</div>
+                  {learner.name && <div style={{ fontSize: 12, color: "#4a5568", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{learner.email}</div>}
                 </div>
-                <div style={{ fontSize: 12, color: "#4a5568" }}>Joined {timeAgo(learner.createdAt)}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div className="learner-join" style={{ fontSize: 12, color: "#4a5568" }}>Joined {timeAgo(learner.createdAt)}</div>
+                <div className="learner-row-actions">
                   <span style={{ fontSize: 12, color: "#7a90bc", background: "#1e2433", padding: "3px 8px", borderRadius: 4 }}>
                     {learner.enrollments.length} course{learner.enrollments.length !== 1 ? "s" : ""}
                   </span>

@@ -8,7 +8,6 @@ export default function CatalogClient({ courses }: { courses: CatalogCourse[] })
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
-  // Collect all unique categories
   const allCategories = Array.from(
     new Set(courses.flatMap(c => c.categories ?? []))
   ).sort();
@@ -22,37 +21,51 @@ export default function CatalogClient({ courses }: { courses: CatalogCourse[] })
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0b0f", fontFamily: "'IBM Plex Sans', sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');`}</style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+        * { box-sizing: border-box; }
+        .cat-nav { padding: 0 40px; }
+        .cat-main { padding: 48px 40px; }
+        .cat-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+        .cat-search { width: 240px; }
+        @media (max-width: 640px) {
+          .cat-nav { padding: 0 16px; }
+          .cat-main { padding: 24px 16px; }
+          .cat-header { flex-direction: column; align-items: flex-start; }
+          .cat-search { width: 100% !important; }
+        }
+      `}</style>
 
       {/* Nav */}
-      <nav style={{ borderBottom: "1px solid #13161f", padding: "0 40px", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0c0e14", position: "sticky", top: 0, zIndex: 10 }}>
+      <nav className="cat-nav" style={{ borderBottom: "1px solid #13161f", height: 54, display: "flex", alignItems: "center", justifyContent: "space-between", background: "#0c0e14", position: "sticky", top: 0, zIndex: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
           <Link href="/" style={{ color: "#f0f4ff", fontWeight: 600, fontSize: 15, textDecoration: "none", letterSpacing: "-0.3px" }}>◆ LMS</Link>
           <Link href="/catalog" style={{ color: "#5a7aff", fontSize: 13, textDecoration: "none", fontWeight: 500 }}>Course Catalog</Link>
         </div>
         <Link href="/admin/scorm/upload" style={{ background: "rgba(90,122,255,0.1)", color: "#8099ff", border: "1px solid rgba(90,122,255,0.2)", padding: "6px 14px", borderRadius: 5, fontSize: 13, textDecoration: "none", fontWeight: 500 }}>
-          + Upload Course
+          + Upload
         </Link>
       </nav>
 
-      <main style={{ padding: "48px 40px", maxWidth: 1200, margin: "0 auto" }}>
+      <main className="cat-main" style={{ maxWidth: 1200, margin: "0 auto" }}>
         {/* Header */}
         <div style={{ marginBottom: 32 }}>
           <div style={{ fontSize: 11, letterSpacing: "1.5px", textTransform: "uppercase", color: "#5a7aff", fontFamily: "'IBM Plex Mono', monospace", marginBottom: 12 }}>
             Course Catalog
           </div>
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
+          <div className="cat-header">
             <div>
-              <h1 style={{ fontSize: 36, fontWeight: 600, color: "#f0f4ff", letterSpacing: "-0.8px", marginBottom: 8 }}>Available Courses</h1>
+              <h1 style={{ fontSize: "clamp(22px, 5vw, 36px)", fontWeight: 600, color: "#f0f4ff", letterSpacing: "-0.8px", marginBottom: 8 }}>Available Courses</h1>
               <p style={{ color: "#4a5568", fontSize: 15 }}>
                 {courses.length === 0 ? "No courses published yet." : `${filtered.length} of ${courses.length} course${courses.length === 1 ? "" : "s"}`}
               </p>
             </div>
             <input
+              className="cat-search"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search courses…"
-              style={{ background: "#0c0e14", border: "1px solid #2a3347", borderRadius: 6, padding: "9px 14px", fontSize: 13, color: "#e2e8f0", outline: "none", width: 240, fontFamily: "'IBM Plex Sans', sans-serif" }}
+              style={{ background: "#0c0e14", border: "1px solid #2a3347", borderRadius: 6, padding: "9px 14px", fontSize: 13, color: "#e2e8f0", outline: "none", fontFamily: "'IBM Plex Sans', sans-serif" }}
             />
           </div>
         </div>
@@ -100,7 +113,7 @@ export default function CatalogClient({ courses }: { courses: CatalogCourse[] })
 
         {/* Course grid */}
         {filtered.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 20 }}>
             {filtered.map((course, i) => (
               <CourseCard key={course.id} course={course} index={i} />
             ))}
